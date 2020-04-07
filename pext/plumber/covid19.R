@@ -1,3 +1,8 @@
+library(pool)
+library(data.table)
+library(magrittr)
+library(ggplot2)
+
 if(.Platform$OS.type == "windows"){
   valid_api_keys <- c("test")
 } else {
@@ -5,11 +10,6 @@ if(.Platform$OS.type == "windows"){
   setDT(apikeys)
   valid_api_keys <- apikeys[purpose %in% c("covid19")]$api_key
 }
-
-library(pool)
-library(data.table)
-library(magrittr)
-library(ggplot2)
 
 db_config <- list(
   driver = Sys.getenv("DB_DRIVER", "Sql Server"),
