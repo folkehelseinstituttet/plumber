@@ -184,7 +184,7 @@ function(req, res, api_key, location_code){
 #* @serializer highcharts
 function(req, res, api_key){
   d <- data.table(
-    age = c(
+    Alder = c(
       "0-9",
       "10-19",
       "20-29",
