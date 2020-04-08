@@ -165,7 +165,7 @@ function(req, res, api_key, location_code){
   d[,cum_n := cumsum(n), by=location_name]
 
   setcolorder(d,c("location_name","date","cum_n","n"))
-  setnames(d, c("Sted", "Prøvedato", "Antall", "Nye i dag"))
+  setnames(d, c("Sted", glue::glue("Pr{fhi::nb$oe}vedato"), "Antall", "Nye i dag"))
 
   d
   # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
@@ -218,7 +218,7 @@ function(req, res, api_key){
 #* @serializer highcharts
 function(req, res, api_key){
   d <- data.table(
-    `Prøvedato`=seq.Date(
+    `date`=seq.Date(
       from = as.Date("2020-02-24"),
       to = lubridate::today(),
       by = 1
@@ -228,6 +228,7 @@ function(req, res, api_key){
   d[,Utlandet := rpois(.N, lambda = 100)]
   d[,Ukjent := rpois(.N, lambda = 100)]
 
+  setnames(d,"date",glue::glue("Pr{fhi::nb$oe}vedato"))
   d
   # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
   # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
@@ -281,11 +282,12 @@ function(req, res, api_key){
   )
   d[,Danmark := rpois(.N, lambda = 100)]
   d[,Finland := rpois(.N, lambda = 100)]
-  d[,Grønland := rpois(.N, lambda = 100)]
+  d[,Gronland := rpois(.N, lambda = 100)]
   d[,Island := rpois(.N, lambda = 100)]
   d[,Norge := rpois(.N, lambda = 100)]
   d[,Sverige := rpois(.N, lambda = 100)]
 
+  setnames(d,"Gronland",)
   d
   # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
   # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
