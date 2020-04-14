@@ -164,7 +164,7 @@ function(req, res, api_key, granularity_time, location_code){
 }
 #* These are the locations and location names
 #* @param api_key api_key
-#* @get /hc_msis_cases_by_date_infected_location
+#* @get /hc_msis_cases_by_time_infected_location
 #* @serializer highcharts
 function(req, res, api_key){
   d <- data.table(
