@@ -163,10 +163,11 @@ function(req, res, api_key, granularity_time, location_code){
   d
 }
 #* These are the locations and location names
+#* @param location_code location_code
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_time_infected_location
 #* @serializer highcharts
-function(req, res, api_key){
+function(req, res, api_key, location_code){
   d <- data.table(
     Ukenr = c(
       "2020-02",
