@@ -239,6 +239,7 @@ function(req, res, api_key, location_code){
 
 #* These are the locations and location names
 #* @param api_key api_key
+#* @preempt require-auth
 #* @get /locations
 function(req, api_key){
   # Safe to assume we have a user, since we've been
