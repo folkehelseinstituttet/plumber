@@ -136,37 +136,48 @@ function(req, res, api_key, location_code){
 
 #* These are the locations and location names
 #* @param location_code location code ("norge" is a common choice)
+#* @param granularity_time day or week
 #* @param api_key api_key
-#* @get /hc_msis_cases_by_date_location
+#* @get /hc_msis_cases_by_time_location
 #* @serializer highcharts
-function(req, res, api_key, location_code){
-  if(!location_code %in% c("all","norge")) stop("not valid")
-  if(location_code == "all"){
-    d <- pool %>% dplyr::tbl("data_covid19_msis") %>%
-      dplyr::filter(granularity_geo %in% c("nation", "county")) %>%
-      dplyr::select(location_code, date, n) %>%
-      dplyr::collect()
-  } else {
-    d <- pool %>% dplyr::tbl("data_covid19_msis") %>%
-      dplyr::filter(location_code== !!location_code) %>%
-      dplyr::select(location_code, date, n) %>%
-      dplyr::collect()
-  }
+function(req, res, api_key, granularity_time, location_code){
+  stopifnot(granularity_time %in% c("day","week"))
+  d <- pool %>% dplyr::tbl("data_covid19_msis") %>%
+    dplyr::filter(granularity_time == !!granularity_time) %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(yrwk, date, n) %>%
+    dplyr::collect()
   setDT(d)
-  d[
-    fhidata::norway_locations_long_b2020,
-    on="location_code",
-    location_name := location_name
-  ]
-  d[,location_code := NULL]
-  setorder(d,location_name,date)
-  #d[,date:=as.POSIXlt(date)+0.001]
   d[,date:=as.Date(date)]
-  d[,cum_n := cumsum(n), by=location_name]
+  setorder(d, date)
 
-  setcolorder(d,c("location_name","date","cum_n","n"))
-  setnames(d, c("Sted", glue::glue("Pr{fhi::nb$oe}vedato"), "Antall", "Nye i dag"))
+  d[,cum_n := cumsum(n)]
 
+  setcolorder(d,c("yrwk", "date","cum_n","n"))
+  if(granularity_time=="day"){
+    d[, yrwk:=NULL]
+  } else {
+    d[, date:=NULL]
+  }
+  setnames(d, c(glue::glue("Pr{fhi::nb$oe}vedato"), "Antall", "Nye"))
+  d
+}
+#* These are the locations and location names
+#* @param api_key api_key
+#* @get /hc_msis_cases_by_date_infected_location
+#* @serializer highcharts
+function(req, res, api_key){
+  d <- data.table(
+    Ukenr = c(
+      "2020-02",
+      "2020-03",
+      "2020-04",
+      "2020-05"
+    )
+  )
+  d[,Norge := rpois(.N, lambda = 100)]
+  d[,Utlandet := rpois(.N, lambda = 100)]
+  d[,Ukjent := rpois(.N, lambda = 100)]
   d
   # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
   # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
@@ -179,12 +190,13 @@ function(req, res, api_key, location_code){
 }
 
 #* These are the locations and location names
+#* @param location_code location_code
 #* @param api_key api_key
-#* @get /hc_msis_cases_by_age_sex
+#* @get /hc_msis_cases_by_age
 #* @serializer highcharts
-function(req, res, api_key){
+function(req, res, api_key, location_code){
   d <- data.table(
-    Alder = c(
+    Aldersgruppe = c(
       "0-9",
       "10-19",
       "20-29",
@@ -197,65 +209,22 @@ function(req, res, api_key){
       "90+"
     )
   )
-  d[,Totalt := rpois(.N, lambda = 4)]
-  d[,Kvinner := rpois(.N, lambda = 4)]
-  d[,Menn := rpois(.N, lambda = 4)]
+  d[,Insidensrate := rpois(.N, lambda = 4)]
 
   d
-  # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
-  # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
-  # j2 <- stringr::str_remove(j2,"\\[")
-  #
-  # j <- paste0("[",j1,",",j2)
-  #
-  # res$body <- "hello"
-  # res
 }
 
 #* These are the locations and location names
+#* @param location_code location_code
 #* @param api_key api_key
-#* @get /hc_msis_cases_by_date_infected_location
+#* @get /hc_msis_cases_by_sex
 #* @serializer highcharts
-function(req, res, api_key){
+function(req, res, api_key, location_code){
   d <- data.table(
-    `date`=seq.Date(
-      from = as.Date("2020-02-24"),
-      to = lubridate::today(),
-      by = 1
-    )
+    Totalt = rpois(1, lambda = 4),
+    Kvinner = rpois(1, lambda = 4),
+    Menn = rpois(1, lambda = 4)
   )
-  d[,Norge := rpois(.N, lambda = 100)]
-  d[,Utlandet := rpois(.N, lambda = 100)]
-  d[,Ukjent := rpois(.N, lambda = 100)]
-
-  setnames(d,"date",glue::glue("Pr{fhi::nb$oe}vedato"))
-  d
-  # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
-  # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
-  # j2 <- stringr::str_remove(j2,"\\[")
-  #
-  # j <- paste0("[",j1,",",j2)
-  #
-  # res$body <- "hello"
-  # res
-}
-
-#* These are the locations and location names
-#* @param api_key api_key
-#* @get /hc_norsyss_comparison_r27_r991_r74_r80_by_date
-#* @serializer highcharts
-function(req, res, api_key){
-  d <- data.table(
-    `Konsultasjonsdato`=seq.Date(
-      from = as.Date("2020-02-24"),
-      to = lubridate::today(),
-      by = 1
-    )
-  )
-  d[, R27  := runif(.N, min = 0, max = 1)]
-  d[, R991 := runif(.N, min = 0, max = 1)]
-  d[, R74  := runif(.N, min = 0, max = 1)]
-  d[, R80  := runif(.N, min = 0, max = 1)]
 
   d
   # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
@@ -267,38 +236,6 @@ function(req, res, api_key){
   # res$body <- "hello"
   # res
 }
-
-#* These are the locations and location names
-#* @param api_key api_key
-#* @get /hc_ecdc_cases_by_date_nordic_country
-#* @serializer highcharts
-function(req, res, api_key){
-  d <- data.table(
-    `Dato`=seq.Date(
-      from = as.Date("2020-02-24"),
-      to = lubridate::today(),
-      by = 1
-    )
-  )
-  d[,Danmark := rpois(.N, lambda = 100)]
-  d[,Finland := rpois(.N, lambda = 100)]
-  d[,Gronland := rpois(.N, lambda = 100)]
-  d[,Island := rpois(.N, lambda = 100)]
-  d[,Norge := rpois(.N, lambda = 100)]
-  d[,Sverige := rpois(.N, lambda = 100)]
-
-  setnames(d,"Gronland",)
-  d
-  # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
-  # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
-  # j2 <- stringr::str_remove(j2,"\\[")
-  #
-  # j <- paste0("[",j1,",",j2)
-  #
-  # res$body <- "hello"
-  # res
-}
-
 
 #* These are the locations and location names
 #* @param api_key api_key
@@ -309,12 +246,4 @@ function(req, api_key){
   # error earlier if we weren't.
   list(data=fhidata::norway_locations_long_b2020)
 }
-
-#* Authentication not required
-#* @preempt require-auth
-#* @get /about
-function(){
-  list(descript="This is a demo service that uses authentication!")
-}
-
 
