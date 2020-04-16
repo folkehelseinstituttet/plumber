@@ -203,7 +203,7 @@ function(req, res, api_key, location_code){
       "90+"
     )
   )
-  d[,Insidensrate := rpois(.N, lambda = 4)]
+  d[,`Tilfeller per 100 000 innbyggere` := rpois(.N, lambda = 4)]
 
   d
 }
