@@ -222,9 +222,16 @@ function(req, res, api_key, location_code){
 #* @serializer highcharts
 function(req, res, api_key, location_code){
   d <- data.table(
-    Totalt = rpois(1, lambda = 4),
-    Kvinner = rpois(1, lambda = 4),
-    Menn = rpois(1, lambda = 4)
+    sex = c("Menn", "Kvinner"),
+    antall = c(40,30)
+  )
+
+  setnames(
+    d,
+    c(
+      glue::glue("Kj{fhi::nb$oe}nn"),
+      "Antall"
+    )
   )
 
   d
