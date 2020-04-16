@@ -109,7 +109,7 @@ function(req, res){
 function(req, res, api_key){
   d <- pool %>% dplyr::tbl("data_covid19_msis") %>%
     dplyr::filter(granularity_time == "day") %>%
-    dplyr::filter(granularity_time == "county") %>%
+    dplyr::filter(granularity_geo == "county") %>%
     dplyr::select(location_code, date, n) %>%
     dplyr::collect()
   setDT(d)
