@@ -156,10 +156,11 @@ function(req, res, api_key, granularity_time, location_code){
   setcolorder(d,c("yrwk", "date","cum_n","n"))
   if(granularity_time=="day"){
     d[, yrwk:=NULL]
+    setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsdato"), "Kumulativt antall", "Nye tilfeller"))
   } else {
     d[, date:=NULL]
+    setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsuke"), "Kumulativt antall", "Nye tilfeller"))
   }
-  setnames(d, c(glue::glue("Pr{fhi::nb$oe}vedato"), "Antall", "Nye"))
   d
 }
 #* These are the locations and location names
@@ -180,14 +181,6 @@ function(req, res, api_key, location_code){
   d[,Utlandet := rpois(.N, lambda = 100)]
   d[,Ukjent := rpois(.N, lambda = 100)]
   d
-  # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
-  # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
-  # j2 <- stringr::str_remove(j2,"\\[")
-  #
-  # j <- paste0("[",j1,",",j2)
-  #
-  # res$body <- "hello"
-  # res
 }
 
 #* These are the locations and location names
@@ -235,24 +228,63 @@ function(req, res, api_key, location_code){
   )
 
   d
-  # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
-  # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
-  # j2 <- stringr::str_remove(j2,"\\[")
-  #
-  # j <- paste0("[",j1,",",j2)
-  #
-  # res$body <- "hello"
-  # res
+}
+
+
+#* Lab data
+#* @param location_code location_code
+#* @param api_key api_key
+#* @get /hc_lab_pos_neg_by_time
+#* @serializer highcharts
+function(req, res, api_key, location_code){
+  d <- data.table(
+    Dato = seq.Date(
+      from = as.Date("2020-02-02"),
+      to = lubridate::today(),
+      by = 1
+    )
+  )
+  d[, Negative := rpois(.N, 500)]
+  d[, Positive := rpois(.N, 50)]
+  d[, Andel := round(100*Positive/(Positive+Negative),1)]
+  d
 }
 
 #* These are the locations and location names
+#* @param location_code location_code
 #* @param api_key api_key
-#* @preempt require-auth
-#* @get /locations
-function(req, api_key){
-  # Safe to assume we have a user, since we've been
-  # through all the filters and would have gotten an
-  # error earlier if we weren't.
-  list(data=fhidata::norway_locations_long_b2020)
+#* @get /hc_norsyss_comparison_r27_r991_r74_r80_by_time
+#* @serializer highcharts
+function(req, res, api_key, location_code){
+  d <- data.table(
+    `Konsultasjonsdato`=seq.Date(
+      from = as.Date("2020-02-24"),
+      to = lubridate::today(),
+      by = 1
+    )
+  )
+  d[, R27  := runif(.N, min = 0, max = 100)]
+  d[, R991 := runif(.N, min = 0, max = 100)]
+  d[, R74  := runif(.N, min = 0, max = 100)]
+  d[, R80  := runif(.N, min = 0, max = 100)]
+
+  d
 }
 
+#* These are the locations and location names
+#* @param location_code location_code
+#* @param api_key api_key
+#* @get /hc_icu_by_time
+#* @serializer highcharts
+function(req, res, api_key, location_code){
+  d <- data.table(
+    `Dato`=seq.Date(
+      from = as.Date("2020-02-24"),
+      to = lubridate::today(),
+      by = 1
+    )
+  )
+  d[, Antall  := rpois(.N, 50)]
+
+  d
+}
