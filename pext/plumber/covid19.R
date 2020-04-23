@@ -336,8 +336,7 @@ function(req, res, api_key, location_code){
     d,
     c(
       "Konsultasjonsdato",
-      #glue::glue("Akutt {fhi::nb$oe}vre luftveisinfeksjon (R74)"),
-      glue::glue("Akutt øvre luftveisinfeksjon (R74)"),
+      glue::glue("Akutt {fhi::nb$oe}vre luftveisinfeksjon (R74)"),
       "Covid-19 (mistenkt eller bekreftet, R991)",
       "Engstelig luftveissykdom IKA (R27)",
       "Influensa (R80)",
