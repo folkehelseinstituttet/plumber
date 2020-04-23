@@ -323,7 +323,7 @@ function(req, res, api_key, location_code){
     )) %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(date >= "2020-03-06") %>%
-    dplyr::filter(age == "totalt") %>%
+    dplyr::filter(age == "total") %>%
     dplyr::filter(location_code == !!location_code) %>%
     dplyr::collect()
   setDT(d)
