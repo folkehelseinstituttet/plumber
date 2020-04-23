@@ -330,6 +330,7 @@ function(req, res, api_key, location_code){
   d[,date:=as.Date(date)]
 
   d[, prop := round(100*n/consult_with_influenza,1)]
+  return(d[,c("date","tag_outcome","prop")])
   d <- dcast.data.table(d, date ~ tag_outcome, value.var="prop")
   setnames(
     d,
