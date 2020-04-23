@@ -109,8 +109,9 @@ function(req, res){
 #* @get /hc_reported_cases
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  if(location_code!="norge") stop("not valid")
-  d <- pool %>% dplyr::tbl("data_covid19_msis") %>%
+  stopifnot(location_code %in% c("norge"))
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+    dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(date, n) %>%
     dplyr::collect()
@@ -124,14 +125,6 @@ function(req, res, api_key, location_code){
   setnames(d, c("Dato", "Antall", "Nye i dag"))
 
   d
-  # j1 <- jsonlite::toJSON(names(d), dataframe = c("values"))
-  # j2 <- jsonlite::toJSON(d, dataframe = c("values"))
-  # j2 <- stringr::str_remove(j2,"\\[")
-  #
-  # j <- paste0("[",j1,",",j2)
-  #
-  # res$body <- "hello"
-  # res
 }
 
 #* These are the locations and location names
@@ -141,8 +134,9 @@ function(req, res, api_key, location_code){
 #* @get /hc_msis_cases_by_time_location
 #* @serializer highcharts
 function(req, res, api_key, granularity_time, location_code){
+  stopifnot(location_code %in% c("norge"))
   stopifnot(granularity_time %in% c("day","week"))
-  d <- pool %>% dplyr::tbl("data_covid19_msis") %>%
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
     dplyr::filter(granularity_time == !!granularity_time) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(yrwk, date, n) %>%
@@ -164,60 +158,116 @@ function(req, res, api_key, granularity_time, location_code){
   d
 }
 #* These are the locations and location names
-#* @param location_code location_code
+#* @param location_code location_code ("norge")
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_time_infected_location
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  d <- data.table(
-    Ukenr = c(
-      "2020-02",
-      "2020-03",
-      "2020-04",
-      "2020-05"
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_infected_abroad") %>%
+    dplyr::filter(granularity_time == "week") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(yrwk, n, tag_location_infected) %>%
+    dplyr::collect()
+  setDT(d)
+  d[, tag_location_infected := factor(
+    tag_location_infected,
+    levels = c(
+      "norge",
+      "utlandet",
+      "ukjent"
+    ),
+    labels = c(
+      "Norge",
+      "Utlandet",
+      "Ukjent"
     )
-  )
-  d[,Norge := rpois(.N, lambda = 100)]
-  d[,Utlandet := rpois(.N, lambda = 100)]
-  d[,Ukjent := rpois(.N, lambda = 100)]
+  )]
+  d <- dcast.data.table(d, yrwk ~ tag_location_infected, value.var = "n")
+  setnames(d, "yrwk", "Ukenr")
+
   d
 }
 
 #* These are the locations and location names
-#* @param location_code location_code
+#* @param location_code location_code ("norge")
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_age
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  d <- data.table(
-    Aldersgruppe = c(
-      "0-9",
-      "10-19",
-      "20-29",
-      "30-39",
-      "40-49",
-      "50-59",
-      "60-69",
-      "70-79",
-      "80-89",
-      "90+"
-    )
-  )
-  d[,`Tilfeller per 100 000 innbyggere` := rpois(.N, lambda = 4)]
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_sex_age") %>%
+    dplyr::filter(granularity_time == "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(age, n) %>%
+    dplyr::group_by(age) %>%
+    dplyr::summarize(n=sum(n)) %>%
+    dplyr::collect()
+  setDT(d)
+
+  x_pop <- fhidata::norway_population_b2020[
+    year==2020 & level=="nation",
+    .(
+      pop=sum(pop)
+    ),keyby=.(
+      age
+    )]
+  x_pop[,age := fancycut::fancycut(
+    age,
+    "0-9" = "[0,9]",
+    "10-19" = "[10,19]",
+    "20-29" = "[20,29]",
+    "30-39" = "[30,39]",
+    "40-49" = "[40,49]",
+    "50-59" = "[50,59]",
+    "60-69" = "[60,69]",
+    "70-79" = "[70,79]",
+    "80-89" = "[80,89]",
+    "90+" = "[90,9999]"
+  )]
+  x_pop <- x_pop[
+    ,
+    .(
+      pop=sum(pop)
+    ),keyby=.(
+      age
+    )]
+  d[
+    x_pop,
+    on="age",
+    incidence := round(100000*n/pop,1)
+  ]
+  d[,n:=NULL]
+
+  setnames(d, c("Aldersgruppe", "Tilfeller per 100 000 innbyggere"))
 
   d
 }
 
 #* These are the locations and location names
-#* @param location_code location_code
+#* @param location_code location_code ("norge")
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_sex
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  d <- data.table(
-    sex = c("Menn", "Kvinner"),
-    antall = c(40,30)
-  )
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_sex_age") %>%
+    dplyr::filter(granularity_time == "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(sex, n) %>%
+    dplyr::group_by(sex) %>%
+    dplyr::summarize(n=sum(n)) %>%
+    dplyr::collect()
+  setDT(d)
+
+  d[, sex := dplyr::case_when(
+    sex == "male" ~ "Menn",
+    sex == "female" ~ "Kvinner"
+  )]
+
 
   setnames(
     d,
@@ -232,41 +282,66 @@ function(req, res, api_key, location_code){
 
 
 #* Lab data
-#* @param location_code location_code
+#* @param location_code location_code ("norge")
 #* @param api_key api_key
 #* @get /hc_lab_pos_neg_by_time
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  d <- data.table(
-    Dato = seq.Date(
-      from = as.Date("2020-02-02"),
-      to = lubridate::today(),
-      by = 1
-    )
-  )
-  d[, Negative := rpois(.N, 500)]
-  d[, Positive := rpois(.N, 50)]
-  d[, Andel := round(100*Positive/(Positive+Negative),1)]
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n_neg, n_pos, pr100_pos) %>%
+    dplyr::collect()
+  setDT(d)
+
+  setnames(d, c(
+    "Dato",
+    "Negative",
+    "Positive",
+    "Andel"
+  ))
   d
 }
 
 #* These are the locations and location names
-#* @param location_code location_code
+#* @param location_code location_code ("norge")
 #* @param api_key api_key
 #* @get /hc_norsyss_comparison_r27_r991_r74_r80_by_time
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  d <- data.table(
-    `Konsultasjonsdato`=seq.Date(
-      from = as.Date("2020-02-24"),
-      to = lubridate::today(),
-      by = 1
+  stopifnot(location_code %in% c("norge"))
+
+  d <- spulsconnect::tbl("data_norsyss") %>%
+    dplyr::filter(tag_outcome %in% c(
+      "covid19_vk_ote",
+      "engstelig_luftveissykdom_ika_vk_ote",
+      "influensa_vk_ote",
+      "rxx_for_covid19_vk_ote",
+      "akkut_ovre_luftveisinfeksjon_vk_ote"
+    )) %>%
+    dplyr::filter(granularity_geo >= "day") %>%
+    dplyr::filter(date >= "2020-03-06") %>%
+    dplyr::filter(age == "totalt") %>%
+    dplyr::filter(location_code == "norge") %>%
+    dplyr::collect()
+  setDT(d)
+  d[,date:=as.Date(date)]
+
+  d[, prop := round(100*n/consult_with_influenza,1)]
+  d <- dcast.data.table(d, date ~ tag_outcome, value.var="prop")
+  setnames(
+    d,
+    c(
+      "Konsultasjonsdato",
+      "Akutt \u00F8vre luftveisinfeksjon (R74)",
+      "Covid-19 (mistenkt eller bekreftet, R991)",
+      "Engstelig luftveissykdom IKA (R27)",
+      "Influensa (R80)",
+      "Luftvei diagnosekoder (samlet)"
     )
   )
-  d[, R27  := runif(.N, min = 0, max = 100)]
-  d[, R991 := runif(.N, min = 0, max = 100)]
-  d[, R74  := runif(.N, min = 0, max = 100)]
-  d[, R80  := runif(.N, min = 0, max = 100)]
 
   d
 }
@@ -277,14 +352,22 @@ function(req, res, api_key, location_code){
 #* @get /hc_icu_by_time
 #* @serializer highcharts
 function(req, res, api_key, location_code){
-  d <- data.table(
-    `Dato`=seq.Date(
-      from = as.Date("2020-02-24"),
-      to = lubridate::today(),
-      by = 1
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_nir_by_time") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n_icu) %>%
+    dplyr::collect()
+  setDT(d)
+
+  setnames(
+    d,
+    c(
+      "Dato",
+      "Antall"
     )
   )
-  d[, Antall  := rpois(.N, 50)]
 
   d
 }
