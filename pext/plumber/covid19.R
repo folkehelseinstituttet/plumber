@@ -313,6 +313,8 @@ function(req, res, api_key, location_code){
 function(req, res, api_key, location_code){
   stopifnot(location_code %in% c("norge"))
 
+  return(cars)
+
   d <- spulsconnect::tbl("data_norsyss") %>%
     dplyr::filter(tag_outcome %in% c(
       "covid19_vk_ote",
