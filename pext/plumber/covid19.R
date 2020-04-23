@@ -331,17 +331,18 @@ function(req, res, api_key, location_code){
 
   d[, prop := round(100*n/consult_with_influenza,1)]
   d <- dcast.data.table(d, date ~ tag_outcome, value.var="prop")
-  setnames(
-    d,
-    c(
-      "Konsultasjonsdato",
-      glue::glue("Akutt {fhi::nb$oe}vre luftveisinfeksjon (R74)"),
-      "Covid-19 (mistenkt eller bekreftet, R991)",
-      "Engstelig luftveissykdom IKA (R27)",
-      "Influensa (R80)",
-      "Luftvei diagnosekoder (samlet)"
-    )
-  )
+  # setnames(
+  #   d,
+  #   c(
+  #     "Konsultasjonsdato",
+  #     glue::glue("Akutt {fhi::nb$oe}vre luftveisinfeksjon (R74)"),
+  #     "Covid-19 (mistenkt eller bekreftet, R991)",
+  #     "Engstelig luftveissykdom IKA (R27)",
+  #     "Influensa (R80)",
+  #     "Luftvei diagnosekoder (samlet)"
+  #   )
+  # )
+
 
   d
 }
