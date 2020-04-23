@@ -313,8 +313,6 @@ function(req, res, api_key, location_code){
 function(req, res, api_key, location_code){
   stopifnot(location_code %in% c("norge"))
 
-  return(cars)
-
   d <- spulsconnect::tbl("data_norsyss") %>%
     dplyr::filter(tag_outcome %in% c(
       "covid19_vk_ote",
@@ -332,6 +330,8 @@ function(req, res, api_key, location_code){
   d[,date:=as.Date(date)]
 
   d[, prop := round(100*n/consult_with_influenza,1)]
+  return(cars)
+
   return(d[,c("date","tag_outcome","prop")])
   d <- dcast.data.table(d, date ~ tag_outcome, value.var="prop")
   setnames(
