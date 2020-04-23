@@ -313,7 +313,7 @@ function(req, res, api_key, location_code){
 function(req, res, api_key, location_code){
   stopifnot(location_code %in% c("norge"))
 
-  d <- tbl("data_norsyss") %>%
+  d <- dplyr::tbl("data_norsyss") %>%
     dplyr::filter(tag_outcome %in% c(
       "covid19_vk_ote",
       "engstelig_luftveissykdom_ika_vk_ote",
