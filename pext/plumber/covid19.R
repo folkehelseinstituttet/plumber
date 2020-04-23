@@ -321,10 +321,10 @@ function(req, res, api_key, location_code){
       "rxx_for_covid19_vk_ote",
       "akkut_ovre_luftveisinfeksjon_vk_ote"
     )) %>%
-    dplyr::filter(granularity_geo >= "day") %>%
+    dplyr::filter(granularity_geo == "day") %>%
     dplyr::filter(date >= "2020-03-06") %>%
     dplyr::filter(age == "totalt") %>%
-    dplyr::filter(location_code == "norge") %>%
+    dplyr::filter(location_code == !!location_code) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
@@ -335,7 +335,7 @@ function(req, res, api_key, location_code){
     d,
     c(
       "Konsultasjonsdato",
-      "Akutt \u00F8vre luftveisinfeksjon (R74)",
+      glue::glue("Akutt {fhi::nb$oe}vre luftveisinfeksjon (R74)"),
       "Covid-19 (mistenkt eller bekreftet, R991)",
       "Engstelig luftveissykdom IKA (R27)",
       "Influensa (R80)",
