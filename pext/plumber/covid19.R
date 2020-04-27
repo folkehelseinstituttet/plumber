@@ -124,7 +124,10 @@ function(req, res, api_key, location_code){
   setcolorder(d,c("date","cum_n","n"))
   setnames(d, c("Dato", "Antall", "Nye i dag"))
 
-  d
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 
 #* These are the locations and location names
@@ -155,7 +158,11 @@ function(req, res, api_key, granularity_time, location_code){
     d[, date:=NULL]
     setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsuke"), "Kumulativt antall", "Nye tilfeller"))
   }
-  d
+
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
@@ -187,7 +194,50 @@ function(req, res, api_key, location_code){
   d <- dcast.data.table(d, yrwk ~ tag_location_infected, value.var = "n")
   setnames(d, "yrwk", "Ukenr")
 
-  d
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
+}
+
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param api_key api_key
+#* @get /hc_msis_cases_by_age_sex
+#* @serializer highcharts
+function(req, res, api_key, location_code){
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_sex_age") %>%
+    dplyr::filter(granularity_time == "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(age, sex, n) %>%
+    dplyr::collect()
+  setDT(d)
+
+  d <- dcast.data.table(d, age ~ sex, value.var = "n")
+  d[, total := female + male]
+  setnames(
+    d,
+    c(
+      "Alder",
+      "Kvinner",
+      "Menn",
+      "Totalt"
+    )
+  )
+  setcolorder(
+    d,
+    c(
+      "Alder",
+      "Totalt"
+    )
+  )
+
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 
 #* These are the locations and location names
@@ -243,7 +293,10 @@ function(req, res, api_key, location_code){
 
   setnames(d, c("Aldersgruppe", "Tilfeller per 100 000 innbyggere"))
 
-  d
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 
 #* These are the locations and location names
@@ -277,7 +330,10 @@ function(req, res, api_key, location_code){
     )
   )
 
-  d
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 
 
@@ -302,7 +358,11 @@ function(req, res, api_key, location_code){
     "Positive",
     "Andel"
   ))
-  d
+
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 
 #* These are the locations and location names
@@ -344,7 +404,10 @@ function(req, res, api_key, location_code){
     )
   )
 
-  d
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
 
 #* These are the locations and location names
@@ -370,5 +433,8 @@ function(req, res, api_key, location_code){
     )
   )
 
-  d
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
 }
