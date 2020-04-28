@@ -103,40 +103,81 @@ function(req, res){
   }
 }
 
-#* These are the locations and location names
+#* These key numbers
 #* @param location_code location code ("norge" is a common choice)
+#* @param lang nb or en
 #* @param api_key api_key
-#* @get /hc_reported_cases
-#* @serializer highcharts
-function(req, res, api_key, location_code){
+#* @get /hc_key_numbers
+function(req, res, api_key, lang="nb", location_code){
+  stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
-  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+
+  n_msis <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n) %>%
+    dplyr::summarize(n=sum(n)) %>%
     dplyr::collect()
-  setDT(d)
-  #d[,date:=as.POSIXlt(date)+0.001]
-  d[,date:=as.Date(date)]
-  setorder(d,date)
-  d[,cum_n := cumsum(n)]
+  n_msis <- n_msis$n
 
-  setcolorder(d,c("date","cum_n","n"))
-  setnames(d, c("Dato", "Antall", "Nye i dag"))
+  n_icu <- pool %>% dplyr::tbl("data_covid19_nir_by_time") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::filter(date==max(date,na.rm=T)) %>%
+    dplyr::select(date, n_icu) %>%
+    dplyr::collect()
+  n_icu <- n_icu$n_icu
+
+  n_lab <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::summarize(n = sum(n_neg + n_pos)) %>%
+    dplyr::collect()
+  n_lab <- n_lab$n
+  n_lab
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("date") %>%
+    dplyr::collect()
+  last_mod <- last_mod$date
+  last_mod <- format.Date(last_mod, "%d/%m/%Y")
 
   list(
-    last_modified = "2020-04-27 23:21:32",
-    data = d
+    figures = rbind(
+      data.frame(
+        key = "n_msis",
+        number = n_msis,
+        description = "SMITTEDE",
+        updated = last_mod
+      ),
+
+      data.frame(
+        key = "n_icu",
+        number = n_icu,
+        description = "ICU",
+        updated = last_mod
+      ),
+
+      data.frame(
+        key = "n_lab",
+        number = n_lab,
+        description = "TESTET",
+        updated = last_mod
+      )
+    )
   )
 }
+
 
 #* These are the locations and location names
 #* @param location_code location code ("norge" is a common choice)
 #* @param granularity_time day or week
+#* @param lang nb or en
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_time_location
 #* @serializer highcharts
-function(req, res, api_key, granularity_time, location_code){
+function(req, res, api_key, lang="nb", granularity_time, location_code){
+  stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
   stopifnot(granularity_time %in% c("day","week"))
   d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
@@ -153,59 +194,41 @@ function(req, res, api_key, granularity_time, location_code){
   setcolorder(d,c("yrwk", "date","cum_n","n"))
   if(granularity_time=="day"){
     d[, yrwk:=NULL]
-    setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsdato"), "Kumulativt antall", "Nye tilfeller"))
+
+    if(lang=="nb"){
+      setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsdato"), "Kumulativt antall", "Nye tilfeller"))
+    } else {
+      setnames(d, c(glue::glue("Sampling date"), "Cumulative cases", "New cases"))
+    }
   } else {
     d[, date:=NULL]
-    setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsuke"), "Kumulativt antall", "Nye tilfeller"))
+
+    if(lang=="nb"){
+      setnames(d, c(glue::glue("Pr{fhi::nb$oe}vetakingsuke"), "Kumulativt antall", "Nye tilfeller"))
+    } else {
+      setnames(d, c(glue::glue("Sampling week"), "Cumulative cases", "New cases"))
+    }
   }
 
-  list(
-    last_modified = "2020-04-27 23:21:32",
-    data = d
-  )
-}
-#* These are the locations and location names
-#* @param location_code location_code ("norge")
-#* @param api_key api_key
-#* @get /hc_msis_cases_by_time_infected_location
-#* @serializer highcharts
-function(req, res, api_key, location_code){
-  stopifnot(location_code %in% c("norge"))
-
-  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_infected_abroad") %>%
-    dplyr::filter(granularity_time == "week") %>%
-    dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(yrwk, n, tag_location_infected) %>%
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
     dplyr::collect()
-  setDT(d)
-  d[, tag_location_infected := factor(
-    tag_location_infected,
-    levels = c(
-      "norge",
-      "utlandet",
-      "ukjent"
-    ),
-    labels = c(
-      "Norge",
-      "Utlandet",
-      "Ukjent"
-    )
-  )]
-  d <- dcast.data.table(d, yrwk ~ tag_location_infected, value.var = "n")
-  setnames(d, "yrwk", "Ukenr")
 
   list(
-    last_modified = "2020-04-27 23:21:32",
+    last_modified = last_mod$datetime,
     data = d
   )
 }
 
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
+#* @param lang nb or en
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_age_sex
 #* @serializer highcharts
-function(req, res, api_key, location_code){
+function(req, res, api_key, lang="nb", location_code){
+  stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
   d <- pool %>% dplyr::tbl("data_covid19_msis_by_sex_age") %>%
@@ -234,11 +257,165 @@ function(req, res, api_key, location_code){
     )
   )
 
+  if(lang=="en"){
+    setnames(
+      d,
+      c(
+        "Age",
+        "Total",
+        "Women",
+        "Men"
+      )
+    )
+  }
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+#* Lab data
+#* @param location_code location_code ("norge")
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_lab_pos_neg_by_time
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n_neg, n_pos, pr100_pos) %>%
+    dplyr::collect()
+  setDT(d)
+
+  if(lang=="nb"){
+    setnames(d, c(
+      "Dato",
+      "Negative",
+      "Positive",
+      "Andel"
+    ))
+  } else {
+    setnames(d, c(
+      "Date",
+      "Negative",
+      "Positive",
+      "Percent"
+    ))
+  }
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_msis_cases_by_time_infected_location
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  if(lang == "nb"){
+    labs_main <- c(
+      "Norge",
+      "Utlandet",
+      "Ukjent"
+    )
+    labs_week <- "Ukenr"
+  } else {
+    labs_main <- c(
+      "Norway",
+      "Abroad",
+      "Unknown"
+    )
+    labs_week <- "Week number"
+  }
+
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_infected_abroad") %>%
+    dplyr::filter(granularity_time == "week") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(yrwk, n, tag_location_infected) %>%
+    dplyr::collect()
+  setDT(d)
+  d[, tag_location_infected := factor(
+    tag_location_infected,
+    levels = c(
+      "norge",
+      "utlandet",
+      "ukjent"
+    ),
+    labels = labs_main
+  )]
+  d <- dcast.data.table(d, yrwk ~ tag_location_infected, value.var = "n")
+  setnames(d, "yrwk", labs_week)
+
   list(
     last_modified = "2020-04-27 23:21:32",
     data = d
   )
 }
+
+
+#* These are the locations and location names
+#* @param location_code location code ("norge" is a common choice)
+#* @param api_key api_key
+#* @get /hc_reported_cases
+#* @serializer highcharts
+function(req, res, api_key, location_code){
+  stopifnot(location_code %in% c("norge"))
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n) %>%
+    dplyr::collect()
+  setDT(d)
+  #d[,date:=as.POSIXlt(date)+0.001]
+  d[,date:=as.Date(date)]
+  setorder(d,date)
+  d[,cum_n := cumsum(n)]
+
+  setcolorder(d,c("date","cum_n","n"))
+  setnames(d, c("Dato", "Antall", "Nye i dag"))
+
+  list(
+    last_modified = "2020-04-27 23:21:32",
+    data = d
+  )
+}
+
+
+
+
 
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
@@ -329,35 +506,6 @@ function(req, res, api_key, location_code){
       "Antall"
     )
   )
-
-  list(
-    last_modified = "2020-04-27 23:21:32",
-    data = d
-  )
-}
-
-
-#* Lab data
-#* @param location_code location_code ("norge")
-#* @param api_key api_key
-#* @get /hc_lab_pos_neg_by_time
-#* @serializer highcharts
-function(req, res, api_key, location_code){
-  stopifnot(location_code %in% c("norge"))
-
-  d <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
-    dplyr::filter(granularity_time == "day") %>%
-    dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n_neg, n_pos, pr100_pos) %>%
-    dplyr::collect()
-  setDT(d)
-
-  setnames(d, c(
-    "Dato",
-    "Negative",
-    "Positive",
-    "Andel"
-  ))
 
   list(
     last_modified = "2020-04-27 23:21:32",
