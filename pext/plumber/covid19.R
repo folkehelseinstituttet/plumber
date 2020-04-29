@@ -178,8 +178,15 @@ function(req, res, api_key, lang="nb", location_code){
 #* @serializer highcharts
 function(req, res, api_key, lang="nb", granularity_time, location_code){
   stopifnot(lang %in% c("nb", "en"))
-  stopifnot(location_code %in% c("norge"))
   stopifnot(granularity_time %in% c("day","week"))
+
+  valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
+  valid_locations <- stringr::str_remove(valid_locations, "county")
+  valid_locations <- c("norge", valid_locations)
+  stopifnot(location_code %in% valid_locations)
+
+  if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
+
   d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
     dplyr::filter(granularity_time == !!granularity_time) %>%
     dplyr::filter(location_code== !!location_code) %>%
