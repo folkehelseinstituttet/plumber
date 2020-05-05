@@ -115,3 +115,19 @@ function(req, res, api_key){
   setDT(d)
   d
 }
+
+#* These are the locations and location names
+#* @param api_key api_key
+#* @get /model_norsyss_covid19_by_time_location
+function(req, res, api_key){
+  d <- pool %>% dplyr::tbl("data_norsyss") %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(granularity_geo %in% c("nation","county")) %>%
+    dplyr::filter(age %in% c("total")) %>%
+    dplyr::filter(tag_outcome %in% "covid19_vk_ote") %>%
+    dplyr::filter(date >= "2020-03-09") %>%
+    dplyr::select(location_code, date, n, consult_with_influenza) %>%
+    dplyr::collect()
+  setDT(d)
+  d
+}
