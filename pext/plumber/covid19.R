@@ -229,12 +229,13 @@ function(req, res, api_key, lang="nb", granularity_time, location_code){
 }
 
 #* These are the locations and location names
+#* @param v version
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
 #* @param api_key api_key
 #* @get /hc_msis_cases_by_age_sex
 #* @serializer highcharts
-function(req, res, api_key, lang="nb", location_code){
+function(req, res, api_key, lang="nb", location_code, v=1){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
@@ -274,6 +275,14 @@ function(req, res, api_key, lang="nb", location_code){
         "Men"
       )
     )
+  }
+
+  if(v==2){
+    if(lang=="en"){
+      d[,Total:=NULL]
+    } else {
+      d[,Totalt := NULL]
+    }
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
