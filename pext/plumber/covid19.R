@@ -341,6 +341,84 @@ function(req, res, api_key, lang="nb", location_code){
 }
 
 
+#* Map of MSIS incidence
+#* @param measure "n" or "pr100000"
+#* @param granularity_geo county
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_msis_cases_map
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(granularity_geo %in% c("county"))
+  stopifnot(measure %in% c("n","pr100000"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+    dplyr::filter(granularity_geo== !!granularity_geo) %>%
+    dplyr::group_by(location_code) %>%
+    dplyr::summarize(n=sum(n)) %>%
+    dplyr::collect()
+  setDT(d)
+
+  if(measure=="pr100000"){
+    x_pop <- fhidata::norway_population_b2020[
+      year==2020,
+      .(pop=sum(pop)),
+      keyby=.(location_code)
+    ]
+    d[
+      x_pop,
+      on="location_code",
+      pop:=pop
+    ]
+    d[,n:=100000*n/pop]
+    d[,pop:=NULL]
+  }
+
+  d[
+    fhidata::norway_locations_long_b2020,
+    on="location_code",
+    location_name := location_name
+  ]
+
+  d[, location_name := stringr::str_to_lower(location_name)]
+
+  d <- d[,.(
+    Fylke = location_name,
+    Antall = n
+  )]
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
