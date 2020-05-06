@@ -372,7 +372,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
       on="location_code",
       pop:=pop
     ]
-    d[,n:=round(100000*n/pop,2)]
+    d[,n:=round(100000*n/pop,1)]
     d[,pop:=NULL]
   }
 
