@@ -354,6 +354,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
   stopifnot(measure %in% c("n","pr100000"))
 
   d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+    dplyr::filter(granularity_time== "week") %>%
     dplyr::filter(granularity_geo== !!granularity_geo) %>%
     dplyr::group_by(location_code) %>%
     dplyr::summarize(n=sum(n)) %>%
@@ -371,7 +372,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
       on="location_code",
       pop:=pop
     ]
-    d[,n:=100000*n/pop]
+    d[,n:=round(100000*n/pop,2)]
     d[,pop:=NULL]
   }
 
