@@ -112,20 +112,25 @@ function(req, res, api_key, lang="nb", location_code){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
-  n_msis <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+  val <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::summarize(n=sum(n)) %>%
     dplyr::collect()
-  n_msis <- n_msis$n
+  cum_n_msis <- val$n
+  cum_n_msis
 
-  n_icu <- pool %>% dplyr::tbl("data_covid19_nir_by_time") %>%
+  val <- pool %>% dplyr::tbl("data_covid19_hospital_by_time") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::filter(date==max(date,na.rm=T)) %>%
-    dplyr::select(date, n_icu) %>%
+    dplyr::select(date, cum_n_icu, cum_n_hospital_any_cause) %>%
     dplyr::collect()
-  n_icu <- n_icu$n_icu
+  setDT(val)
+  setorder(val,-date)
+  cum_n_hospital_any_cause <- val[!is.na(cum_n_hospital_any_cause)]$cum_n_hospital_any_cause[1]
+  cum_n_icu <- val[!is.na(cum_n_icu)]$cum_n_icu[1]
+  cum_n_hospital_any_cause
+  cum_n_icu
 
   n_lab <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
     dplyr::filter(granularity_time == "day") %>%
@@ -135,6 +140,12 @@ function(req, res, api_key, lang="nb", location_code){
   n_lab <- n_lab$n
   n_lab
 
+  val <- pool %>% dplyr::tbl("data_covid19_deaths") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::collect()
+  cum_n_deaths <- val$cum_n
+  cum_n_deaths
+
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
     dplyr::filter(task=="data_covid19_daily_report") %>%
     dplyr::select("date") %>%
@@ -142,30 +153,85 @@ function(req, res, api_key, lang="nb", location_code){
   last_mod <- last_mod$date
   last_mod <- format.Date(last_mod, "%d/%m/%Y")
 
-  list(
-    figures = rbind(
-      data.frame(
-        key = "n_msis",
-        number = n_msis,
-        description = "SMITTEDE",
-        updated = last_mod
-      ),
+  if(lang == "nb"){
+    retval <- list(
+      figures = rbind(
+        data.frame(
+          key = "cum_n_msis",
+          number = cum_n_msis,
+          description = "Meldte tilfeller",
+          updated = last_mod
+        ),
 
-      data.frame(
-        key = "n_icu",
-        number = n_icu,
-        description = "ICU",
-        updated = last_mod
-      ),
+        data.frame(
+          key = "cum_n_hospital_any_cause",
+          number = cum_n_hospital_any_cause,
+          description = "Innlagt sykehus",
+          updated = last_mod
+        ),
 
-      data.frame(
-        key = "n_lab",
-        number = n_lab,
-        description = "TESTET",
-        updated = last_mod
+        data.frame(
+          key = "cum_n_icu",
+          number = cum_n_icu,
+          description = "Innlagt intensiv",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_n_deaths",
+          number = cum_n_deaths,
+          description = glue::glue("D{fhi::nb$oe}de"),
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "n_lab",
+          number = n_lab,
+          description = "Testet",
+          updated = last_mod
+        )
       )
     )
-  )
+  } else {
+    retval <- list(
+      figures = rbind(
+        data.frame(
+          key = "cum_n_msis",
+          number = cum_n_msis,
+          description = "Reported cases",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_n_hospital_any_cause",
+          number = cum_n_hospital_any_cause,
+          description = "Admitted to hospital",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_n_icu",
+          number = cum_n_icu,
+          description = "Admitted to ICU",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_n_deaths",
+          number = cum_n_deaths,
+          description = "Deaths",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "n_lab",
+          number = n_lab,
+          description = "Tested",
+          updated = last_mod
+        )
+      )
+    )
+  }
 }
 
 
