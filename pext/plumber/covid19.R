@@ -296,6 +296,66 @@ function(req, res, api_key, lang="nb", granularity_time, location_code){
 
 #* These are the locations and location names
 #* @param v version
+#* @param yrwk yrwk, or "total"
+#* @param location_code location_code ("norge")
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_msis_cases_by_time_age_sex
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge", yrwk="total", v=1){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  if(yrwk == "total"){
+    d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_sex_age") %>%
+      dplyr::filter(granularity_time == "total") %>%
+      dplyr::filter(location_code== !!location_code) %>%
+      dplyr::select(age, sex, n) %>%
+      dplyr::collect()
+  } else {
+    d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_sex_age") %>%
+      dplyr::filter(yrwk == !!yrwk) %>%
+      dplyr::filter(location_code== !!location_code) %>%
+      dplyr::select(age, sex, n) %>%
+      dplyr::collect()
+  }
+  setDT(d)
+
+  d <- dcast.data.table(d, age ~ sex, value.var = "n")
+  setnames(
+    d,
+    c(
+      "Alder",
+      "Kvinner",
+      "Menn"
+    )
+  )
+
+  if(lang=="en"){
+    setnames(
+      d,
+      c(
+        "Age",
+        "Women",
+        "Men"
+      )
+    )
+  }
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+#* These are the locations and location names
+#* @param v version
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
 #* @param api_key api_key
@@ -305,7 +365,7 @@ function(req, res, api_key, lang="nb", location_code, v=1){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
-  d <- pool %>% dplyr::tbl("data_covid19_msis_by_sex_age") %>%
+  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_sex_age") %>%
     dplyr::filter(granularity_time == "total") %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(age, sex, n) %>%
