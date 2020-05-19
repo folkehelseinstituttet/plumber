@@ -123,7 +123,7 @@ function(req, res, api_key, lang="nb", location_code){
   val <- pool %>% dplyr::tbl("data_covid19_hospital_by_time") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, cum_n_icu, cum_n_hospital_any_cause) %>%
+    dplyr::select(date, cum_n_icu, cum_n_hospital_main_cause) %>%
     dplyr::collect()
   setDT(val)
   setorder(val,-date)
