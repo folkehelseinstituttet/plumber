@@ -1,3 +1,6 @@
+## WHEN DEBUGGING, START RUNNING HERE
+## THIS LOADS UP YOUR DATABASE
+
 library(pool)
 library(data.table)
 library(magrittr)
@@ -55,7 +58,7 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
 }
 DBI::dbExecute(pool, glue::glue({"USE {db_config$db};"}))
 
-
+## WHEN DEBUGGING, STOP RUNNING HERE
 
 
 #* Filter that grabs the "username" querystring parameter.
@@ -108,7 +111,7 @@ function(req, res){
 #* @param lang nb or en
 #* @param api_key api_key
 #* @get /hc_key_numbers
-function(req, res, api_key, lang="nb", location_code){
+function(req, res, api_key, lang="nb", location_code="norge"){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
@@ -135,7 +138,7 @@ function(req, res, api_key, lang="nb", location_code){
   n_lab <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::summarize(n = sum(n_neg + n_pos)) %>%
+    dplyr::summarize(n = max(cum_n_tested)) %>%
     dplyr::collect()
   n_lab <- n_lab$n
   n_lab
