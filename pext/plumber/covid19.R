@@ -127,9 +127,9 @@ function(req, res, api_key, lang="nb", location_code){
     dplyr::collect()
   setDT(val)
   setorder(val,-date)
-  cum_n_hospital_any_cause <- val[!is.na(cum_n_hospital_any_cause)]$cum_n_hospital_any_cause[1]
+  cum_n_hospital_main_cause <- val[!is.na(cum_n_hospital_main_cause)]$cum_n_hospital_main_cause[1]
   cum_n_icu <- val[!is.na(cum_n_icu)]$cum_n_icu[1]
-  cum_n_hospital_any_cause
+  cum_n_hospital_main_cause
   cum_n_icu
 
   n_lab <- pool %>% dplyr::tbl("data_covid19_lab_by_time") %>%
@@ -165,7 +165,7 @@ function(req, res, api_key, lang="nb", location_code){
 
         data.frame(
           key = "cum_n_hospital_any_cause",
-          number = cum_n_hospital_any_cause,
+          number = cum_n_hospital_main_cause,
           description = "Innlagt sykehus",
           updated = last_mod
         ),
@@ -204,7 +204,7 @@ function(req, res, api_key, lang="nb", location_code){
 
         data.frame(
           key = "cum_n_hospital_any_cause",
-          number = cum_n_hospital_any_cause,
+          number = cum_n_hospital_main_cause,
           description = "Admitted to hospital",
           updated = last_mod
         ),
