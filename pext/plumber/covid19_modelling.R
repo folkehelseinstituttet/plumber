@@ -37,7 +37,7 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
   pool <- dbPool(
     drv = odbc::odbc(),
     driver = db_config$driver,
-    server = db_config$server,
+    server = "dm-test",
     database = db_config$db,
     port = db_config$port,
     trusted_connection = "yes"

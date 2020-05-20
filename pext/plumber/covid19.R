@@ -40,7 +40,7 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
   pool <- dbPool(
     drv = odbc::odbc(),
     driver = db_config$driver,
-    server = db_config$server,
+    server = "dm-test",
     database = db_config$db,
     port = db_config$port,
     trusted_connection = "yes"
@@ -106,6 +106,7 @@ function(req, res){
   }
 }
 
+# key numbers ----
 #* These key numbers
 #* @param location_code location code ("norge" is a common choice)
 #* @param lang nb or en
@@ -115,6 +116,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
+  # cum num cases
   val <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
@@ -123,15 +125,19 @@ function(req, res, api_key, lang="nb", location_code="norge"){
   cum_n_msis <- val$n
   cum_n_msis
 
+  # cum num hospital and icu
   val <- pool %>% dplyr::tbl("data_covid19_hospital_by_time") %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, cum_n_icu, cum_n_hospital_main_cause) %>%
+    dplyr::summarize(
+      cum_n_icu = sum(n_icu),
+      cum_n_hospital_main_cause = sum(n_hospital_main_cause)
+    ) %>%
     dplyr::collect()
   setDT(val)
-  setorder(val,-date)
-  cum_n_hospital_main_cause <- val[!is.na(cum_n_hospital_main_cause)]$cum_n_hospital_main_cause[1]
-  cum_n_icu <- val[!is.na(cum_n_icu)]$cum_n_icu[1]
+
+  cum_n_hospital_main_cause <- val$cum_n_hospital_main_cause
+  cum_n_icu <- val$cum_n_icu
   cum_n_hospital_main_cause
   cum_n_icu
 
@@ -237,7 +243,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
   }
 }
 
-
+# hc_msis_cases_by_time_location ----
 #* These are the locations and location names
 #* @param location_code location code ("norge" is a common choice)
 #* @param granularity_time day or week
@@ -297,6 +303,95 @@ function(req, res, api_key, lang="nb", granularity_time, location_code){
   )
 }
 
+# (G) hc_hospital_by_time_location ----
+#* These are the locations and location names
+#* @param location_code location code ("norge" is a common choice)
+#* @param granularity_time day or week
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_hospital_by_time_location
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", granularity_time="day", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(granularity_time %in% "day")
+  stopifnot(location_code %in% "norge")
+
+  d <- pool %>% dplyr::tbl("data_covid19_hospital_by_time") %>%
+    dplyr::filter(granularity_time == !!granularity_time) %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n_hospital_main_cause) %>%
+    dplyr::collect()
+  setDT(d)
+  d[,date:=as.Date(date)]
+  setorder(d, date)
+
+  d[,cum_n := cumsum(n_hospital_main_cause)]
+
+  setcolorder(d,c("date","cum_n","n_hospital_main_cause"))
+
+  if(lang=="nb"){
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnlegelser"))
+  } else {
+    setnames(d, c(glue::glue("Date"), "Cumulative cases", "Hospital admissions"))
+  }
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+# (I) hc_icu_by_time_location ----
+#* These are the locations and location names
+#* @param location_code location code ("norge" is a common choice)
+#* @param granularity_time day or week
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_icu_by_time_location
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", granularity_time="day", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(granularity_time %in% "day")
+  stopifnot(location_code %in% "norge")
+
+  d <- pool %>% dplyr::tbl("data_covid19_hospital_by_time") %>%
+    dplyr::filter(granularity_time == !!granularity_time) %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n_icu) %>%
+    dplyr::collect()
+  setDT(d)
+  d[,date:=as.Date(date)]
+  setorder(d, date)
+
+  d[,cum_n := cumsum(n_icu)]
+
+  setcolorder(d,c("date","cum_n","n_icu"))
+
+  if(lang=="nb"){
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnlegelser"))
+  } else {
+    setnames(d, c(glue::glue("Date"), "Cumulative cases", "ICU admissions"))
+  }
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+# (D) hc_msis_cases_by_time_age_sex ----
 #* These are the locations and location names
 #* @param v version
 #* @param yrwk yrwk, or "total"
@@ -357,6 +452,62 @@ function(req, res, api_key, lang="nb", location_code="norge", yrwk="total", v=1)
   )
 }
 
+# (K) hc_deaths_by_age_sex ----
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_deaths_by_age_sex
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_demographics") %>%
+    dplyr::filter(granularity_time == "total") %>%
+    dplyr::filter(tag_outcome == "death") %>%
+    dplyr::filter(age != "total") %>%
+    dplyr::filter(sex != "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(age, sex, n) %>%
+    dplyr::collect()
+
+  setDT(d)
+
+  d <- dcast.data.table(d, age ~ sex, value.var = "n")
+  setnames(
+    d,
+    c(
+      "Alder",
+      "Kvinner",
+      "Menn"
+    )
+  )
+
+  if(lang=="en"){
+    setnames(
+      d,
+      c(
+        "Age",
+        "Women",
+        "Men"
+      )
+    )
+  }
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+# hc_msis_cases_by_age_sex ----
 #* These are the locations and location names
 #* @param v version
 #* @param location_code location_code ("norge")
@@ -425,6 +576,7 @@ function(req, res, api_key, lang="nb", location_code, v=1){
   )
 }
 
+# hc_lab_pos_neg_by_time ----
 #* Lab data
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
@@ -469,7 +621,7 @@ function(req, res, api_key, lang="nb", location_code){
   )
 }
 
-
+# hc_msis_cases_map -----
 #* Map of MSIS incidence
 #* @param measure "n" or "pr100000"
 #* @param granularity_geo county or municip
@@ -567,7 +719,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
 
 
 
-
+# hc_msis_cases_by_time_infected_location ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
@@ -618,7 +770,7 @@ function(req, res, api_key, lang="nb", location_code){
   )
 }
 
-
+# hc_reported_cases ----
 #* These are the locations and location names
 #* @param location_code location code ("norge" is a common choice)
 #* @param api_key api_key
@@ -649,7 +801,7 @@ function(req, res, api_key, location_code){
 
 
 
-
+# hc_msis_cases_by_age ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param api_key api_key
@@ -709,6 +861,7 @@ function(req, res, api_key, location_code){
   )
 }
 
+# hc_msis_cases_by_sex ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param api_key api_key
@@ -746,6 +899,7 @@ function(req, res, api_key, location_code){
   )
 }
 
+# hc_norsyss_comparison_r27_r991_r74_r80_by_time ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param api_key api_key
@@ -791,6 +945,7 @@ function(req, res, api_key, location_code){
   )
 }
 
+# hc_icu_by_time ----
 #* These are the locations and location names
 #* @param location_code location_code
 #* @param api_key api_key
