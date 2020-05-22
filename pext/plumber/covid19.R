@@ -330,7 +330,7 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_hospital_main_cause"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnlegelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnleggelser"))
   } else {
     setnames(d, c(glue::glue("Date"), "Cumulative cases", "Hospital admissions"))
   }
@@ -374,7 +374,7 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_icu"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnlegelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnleggelser"))
   } else {
     setnames(d, c(glue::glue("Date"), "Cumulative cases", "ICU admissions"))
   }
@@ -641,6 +641,8 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
     dplyr::summarize(n=sum(n)) %>%
     dplyr::collect()
   setDT(d)
+
+  setorder(n)
 
   if(measure=="pr100000"){
     x_pop <- fhidata::norway_population_b2020[
