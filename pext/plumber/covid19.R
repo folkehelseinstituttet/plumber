@@ -642,7 +642,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
     dplyr::collect()
   setDT(d)
 
-  setorder(n)
+  setorder(d,-n)
 
   if(measure=="pr100000"){
     x_pop <- fhidata::norway_population_b2020[
