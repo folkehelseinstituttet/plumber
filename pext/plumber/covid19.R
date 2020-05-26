@@ -24,7 +24,7 @@ db_config <- list(
 )
 
 if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
-  #* linux
+  # linux
   pool <- dbPool(
     drv = odbc::odbc(),
     driver = db_config$driver,
@@ -36,7 +36,7 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
     #trusted_connection = "yes"
   )
 } else if(db_config$driver %in% c("Sql Server")){
-  #* windows
+  # windows
   pool <- dbPool(
     drv = odbc::odbc(),
     driver = db_config$driver,
