@@ -106,8 +106,7 @@ function(req, res){
   }
 }
 
-# key numbers ----
-#* These key numbers
+#* key numbers ----
 #* @param location_code location code ("norge" is a common choice)
 #* @param lang nb or en
 #* @param api_key api_key
@@ -243,8 +242,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
   }
 }
 
-# hc_msis_cases_by_time_location ----
-#* These are the locations and location names
+#* hc_msis_cases_by_time_location ----
 #* @param location_code location code ("norge" is a common choice)
 #* @param granularity_time day or week
 #* @param lang nb or en
@@ -303,8 +301,7 @@ function(req, res, api_key, lang="nb", granularity_time, location_code){
   )
 }
 
-# (G) hc_hospital_by_time_location ----
-#* These are the locations and location names
+#* (G) hc_hospital_by_time_location ----
 #* @param location_code location code ("norge" is a common choice)
 #* @param granularity_time day or week
 #* @param lang nb or en
@@ -330,9 +327,9 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_hospital_main_cause"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye intensivinnleggelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye sykehusinnlegelser"))
   } else {
-    setnames(d, c(glue::glue("Date"), "Cumulative cases", "New intensive care admissions"))
+    setnames(d, c(glue::glue("Date"), "Cumulative total", "New hospital admissions"))
   }
 
 
@@ -347,8 +344,7 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   )
 }
 
-# (I) hc_icu_by_time_location ----
-#* These are the locations and location names
+#* (I) hc_icu_by_time_location ----
 #* @param location_code location code ("norge" is a common choice)
 #* @param granularity_time day or week
 #* @param lang nb or en
@@ -374,9 +370,9 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_icu"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye sykehusinnleggelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye intensivinnleggelser"))
   } else {
-    setnames(d, c(glue::glue("Date"), "Cumulative cases", "New ICU admissions"))
+    setnames(d, c(glue::glue("Date"), "Cumulative intensive total", "New intensive care admissions"))
   }
 
 
@@ -391,7 +387,7 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   )
 }
 
-# (D) hc_msis_cases_by_time_age_sex ----
+#* (D) hc_msis_cases_by_time_age_sex ----
 #* These are the locations and location names
 #* @param v version
 #* @param yrwk yrwk, or "total"
@@ -452,7 +448,7 @@ function(req, res, api_key, lang="nb", location_code="norge", yrwk="total", v=1)
   )
 }
 
-# (K) hc_deaths_by_age_sex ----
+#* (K) hc_deaths_by_age_sex ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
@@ -507,7 +503,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
   )
 }
 
-# hc_msis_cases_by_age_sex ----
+#* hc_msis_cases_by_age_sex ----
 #* These are the locations and location names
 #* @param v version
 #* @param location_code location_code ("norge")
@@ -576,7 +572,7 @@ function(req, res, api_key, lang="nb", location_code, v=1){
   )
 }
 
-# hc_lab_pos_neg_by_time ----
+#* hc_lab_pos_neg_by_time ----
 #* Lab data
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
@@ -621,7 +617,7 @@ function(req, res, api_key, lang="nb", location_code){
   )
 }
 
-# hc_msis_cases_map -----
+#* hc_msis_cases_map -----
 #* Map of MSIS incidence
 #* @param measure "n" or "pr100000"
 #* @param granularity_geo county or municip
@@ -721,7 +717,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
 
 
 
-# hc_msis_cases_by_time_infected_location ----
+#* hc_msis_cases_by_time_infected_location ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
@@ -772,7 +768,7 @@ function(req, res, api_key, lang="nb", location_code){
   )
 }
 
-# hc_reported_cases ----
+#* hc_reported_cases ----
 #* These are the locations and location names
 #* @param location_code location code ("norge" is a common choice)
 #* @param api_key api_key
@@ -803,7 +799,7 @@ function(req, res, api_key, location_code){
 
 
 
-# hc_msis_cases_by_age ----
+#* hc_msis_cases_by_age ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param api_key api_key
@@ -863,7 +859,7 @@ function(req, res, api_key, location_code){
   )
 }
 
-# hc_msis_cases_by_sex ----
+#* hc_msis_cases_by_sex ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param api_key api_key
@@ -901,7 +897,7 @@ function(req, res, api_key, location_code){
   )
 }
 
-# hc_norsyss_comparison_r27_r991_r74_r80_by_time ----
+#* hc_norsyss_comparison_r27_r991_r74_r80_by_time ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param api_key api_key
@@ -947,7 +943,7 @@ function(req, res, api_key, location_code){
   )
 }
 
-# hc_icu_by_time ----
+#* hc_icu_by_time ----
 #* These are the locations and location names
 #* @param location_code location_code
 #* @param api_key api_key
@@ -981,12 +977,8 @@ function(req, res, api_key, location_code){
 
 
 
-# selvrapportering
-# age has a total
-# sex has a total
-
-# location_code has a "norge"
-# SELV (1) hc_sr_symptoms_by_time ----
+#* location_code has a "norge"
+#* SELV (1) hc_sr_symptoms_by_time ----
 #* These are the locations and location names
 #* @param lang nb
 #* @param api_key api_key
@@ -1022,7 +1014,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
 }
 
 
-# SELV (2) hc_sr_symptoms_by_age_sex ----
+#* SELV (2) hc_sr_symptoms_by_age_sex ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb
@@ -1080,7 +1072,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
 
 
 
-# SELV (3) hc_sr_symptoms_map ----
+#* SELV (3) hc_sr_symptoms_map ----
 #* Map of Symptoms incidence
 #* @param measure "n" or "pr10000"
 #* @param granularity_geo county
@@ -1146,7 +1138,7 @@ function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
 
 
 
-# SELV (4) hc_sr_symptoms_with_without_feber ----
+#* SELV (4) hc_sr_symptoms_with_without_feber ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb
@@ -1224,7 +1216,7 @@ setnames(
 
 
 
-# SELV (5) hc_sr_symptoms_shape ----
+#* SELV (5) hc_sr_symptoms_shape ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb or en
@@ -1285,7 +1277,7 @@ function(req, res, api_key, lang="nb", location_code="norge"){
 }
 
 
-# SELV (6) hc_sr_symptoms_dr_contact ----
+#* SELV (6) hc_sr_symptoms_dr_contact ----
 #* These are the locations and location names
 #* @param location_code location_code ("norge")
 #* @param lang nb
