@@ -330,9 +330,9 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_hospital_main_cause"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnleggelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye Sykehusinnleggelser"))
   } else {
-    setnames(d, c(glue::glue("Date"), "Cumulative cases", "Hospital admissions"))
+    setnames(d, c(glue::glue("Date"), "Cumulative cases", "New Hospital admissions"))
   }
 
 
@@ -976,3 +976,371 @@ function(req, res, api_key, location_code){
     data = d
   )
 }
+
+
+
+
+
+# selvrapportering
+# age has a total
+# sex has a total
+
+# location_code has a "norge"
+# SELV (1) hc_sr_symptoms_by_time ----
+#* These are the locations and location names
+#* @param lang nb
+#* @param api_key api_key
+#* @get /hc_sr_symptoms_by_time
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% "norge")
+
+
+  d <- pool %>% dplyr::tbl("data_covid19_self_reporting") %>%
+    dplyr::filter(age == "total") %>%
+    dplyr::filter(sex == "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(date, n) %>%
+    dplyr::collect()
+  setDT(d)
+  d[,date:=as.Date(date)]
+  setorder(d, date)
+
+  setcolorder(d,c("date","n"))
+  setnames(d, c(glue::glue("Dato"), "Antall"))
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_self_reporting") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+# SELV (2) hc_sr_symptoms_by_age_sex ----
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param lang nb
+#* @param api_key api_key
+#* @get /hc_sr_symptoms_by_age_sex
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_self_reporting") %>%
+    dplyr::filter(age != "total") %>%
+    dplyr::filter(sex != "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(n,sex,age) %>%
+    dplyr::group_by(age, sex) %>%
+    dplyr::summarize(n=sum(n)) %>%
+    dplyr::collect()
+  setDT(d)
+  d[,age:=as.numeric(age)]
+
+  d <- dcast.data.table(d, age~sex , value.var = "n")
+  d[, total := female + male]
+  setnames(
+    d,
+    c(
+      "Alder",
+      "Kvinner",
+      "Menn",
+      "Alle"
+    )
+  )
+  setcolorder(
+    d,
+    c(
+      "Alder",
+      "Alle",
+      "Menn",
+      "Kvinner"
+    )
+  )
+
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+# SELV (3) hc_sr_symptoms_map ----
+#* Map of Symptoms incidence
+#* @param measure "n" or "pr10000"
+#* @param granularity_geo county
+#* @param lang nb
+#* @param api_key api_key
+#* @get /hc_sr_symptoms_map
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", granularity_geo="county", measure="n"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(granularity_geo %in% c("county"))
+  stopifnot(measure %in% c("n","pr10000"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_self_reporting") %>%
+    dplyr::filter(granularity_geo== !!granularity_geo) %>%
+    dplyr::filter(age == "total") %>%
+    dplyr::filter(sex == "total") %>%
+    dplyr::group_by(location_code) %>%
+    dplyr::summarize(n=sum(n)) %>%
+    dplyr::collect()
+  setDT(d)
+
+  setorder(d,-n)
+
+  if(measure=="pr10000"){
+    x_pop <- fhidata::norway_population_b2020[
+      year==2020,
+      .(pop=sum(pop)),
+      keyby=.(location_code)
+      ]
+    d[
+      x_pop,
+      on="location_code",
+      pop:=pop
+      ]
+    d[,n:=round(10000*n/pop,1)]
+    d[,pop:=NULL]
+  }
+
+
+  d[
+      fhidata::norway_locations_long_b2020,
+      on="location_code",
+      location_name := location_name
+      ]
+
+    d[, location_name := stringr::str_to_lower(location_name)]
+
+    d <- d[,.(
+      Fylke = location_name,
+      Antall = n
+    )]
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+# SELV (4) hc_sr_symptoms_with_without_feber ----
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param lang nb
+#* @param api_key api_key
+#* @get /hc_sr_symptoms_with_without_feber
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_self_reporting") %>%
+    dplyr::filter(age == "total") %>%
+    dplyr::filter(sex == "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(
+      n_symps_yesfever_cough_or_breath,
+      n_symps_nofever_cough_or_breath,
+      n_symps_yesfever_muscle_or_headache,
+      n_symps_nofever_muscle_or_headache,
+      n_symps_yesfever_throat_or_nose,
+      n_symps_nofever_throat_or_nose,
+      n_symps_yesfever_gastro_or_taste_smell_or_other,
+      n_symps_nofever_gastro_or_taste_smell_or_other) %>%
+    dplyr::summarize(
+      n_symps_yesfever_cough_or_breath=sum(n_symps_yesfever_cough_or_breath),
+      n_symps_nofever_cough_or_breath=sum(n_symps_nofever_cough_or_breath),
+      n_symps_yesfever_muscle_or_headache=sum(n_symps_yesfever_muscle_or_headache),
+      n_symps_nofever_muscle_or_headache=sum(n_symps_nofever_muscle_or_headache),
+      n_symps_yesfever_throat_or_nose=sum( n_symps_yesfever_throat_or_nose),
+      n_symps_nofever_throat_or_nose=sum( n_symps_nofever_throat_or_nose),
+      n_symps_yesfever_gastro_or_taste_smell_or_other=sum(n_symps_yesfever_gastro_or_taste_smell_or_other),
+      n_symps_nofever_gastro_or_taste_smell_or_other=sum(n_symps_nofever_gastro_or_taste_smell_or_other)) %>%
+    dplyr::collect()
+  setDT(d)
+
+  colA = c("n_symps_yesfever_cough_or_breath",
+           "n_symps_yesfever_throat_or_nose",
+           "n_symps_yesfever_muscle_or_headache",
+            "n_symps_yesfever_gastro_or_taste_smell_or_other")
+  colB = c("n_symps_nofever_cough_or_breath",
+           "n_symps_nofever_throat_or_nose",
+           "n_symps_nofever_muscle_or_headache",
+           "n_symps_nofever_gastro_or_taste_smell_or_other")
+
+  d = melt(d, measure = list(colA, colB), value.name = c("medfeber", "tenfeber"))
+
+d[variable==1,Symptom:="hoste eller tungpust"]
+d[variable==2,Symptom:=glue::glue("s{fhi::nb$aa}r hals eller rennende nese")]
+d[variable==3,Symptom:="muskelverk eller hodepine"]
+d[variable==4,Symptom:= "andre symptomer"]
+
+d[,variable:=NULL]
+
+setcolorder(d,c("Symptom"))
+
+setnames(
+  d,
+  c(
+    "Symptom",
+    "Med feber",
+    "Uten feber"
+  )
+)
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+# SELV (5) hc_sr_symptoms_shape ----
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param lang nb or en
+#* @param api_key api_key
+#* @get /hc_sr_symptoms_shape
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_self_reporting") %>%
+    dplyr::filter(age != "total") %>%
+    dplyr::filter(sex != "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(
+      n_today_0normal,
+      n_today_1tired,
+      n_today_2need_rest,
+      n_today_3bedridden_some_help,
+      n_today_4bedridden_lots_help)%>%
+    dplyr::summarize(n_today_0normal=sum(n_today_0normal),
+                    n_today_1tired=sum(n_today_1tired),
+                    n_today_2need_rest=sum(n_today_2need_rest),
+                    n_today_3bedridden_some_help=sum(n_today_3bedridden_some_help),
+                    n_today_4bedridden_lots_help=sum(n_today_4bedridden_lots_help)) %>%
+    dplyr::collect()
+  setDT(d)
+
+  colA = c("n_today_0normal",
+           "n_today_1tired",
+           "n_today_2need_rest",
+           "n_today_3bedridden_some_help",
+           "n_today_4bedridden_lots_help")
+
+  d = melt(d, measure = list(colA), value.name = c("n"))
+
+  d[variable=="n_today_0normal",Kategori:="Som vanlig"]
+  d[variable=="n_today_1tired",Kategori:="Er mer sliten enn vanlig, men er for det meste oppe"]
+  d[variable=="n_today_2need_rest",Kategori:="Trenger mye hvile, men er oppe innimellom"]
+  d[variable=="n_today_3bedridden_some_help",Kategori:= "Er sengeliggende og trenger noe hjelp"]
+  d[variable=="n_today_4bedridden_lots_help",Kategori:= "Er sengeliggende og trenger hjelp til det meste"]
+
+  d[,variable:=NULL]
+
+  setcolorder(d,c("Kategori"))
+
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+# SELV (6) hc_sr_symptoms_dr_contact ----
+#* These are the locations and location names
+#* @param location_code location_code ("norge")
+#* @param lang nb
+#* @param api_key api_key
+#* @get /hc_sr_symptoms_dr_contact
+#* @serializer highcharts
+function(req, res, api_key, lang="nb", location_code="norge"){
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_self_reporting") %>%
+    dplyr::filter(age != "total") %>%
+    dplyr::filter(sex != "total") %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(sex,n_contact_doctor_yes,n_contact_doctor_no) %>%
+    dplyr::group_by(sex) %>%
+    dplyr::summarize(
+      n_contact_doctor_yes=sum(n_contact_doctor_yes),
+      n_contact_doctor_no=sum(n_contact_doctor_no)
+      ) %>%
+    dplyr::collect()
+  setDT(d)
+
+  d[, Sum := n_contact_doctor_yes + n_contact_doctor_no]
+
+  d <- dcast(melt(d, id.vars = "sex"), variable ~ sex)
+
+  d[, Alle := female + male]
+
+  d[variable=="n_contact_doctor_yes", variable:=glue::glue("Har v{fhi::nb$aa}rt i kontakt med lege")]
+  d[variable=="n_contact_doctor_no", variable:=glue::glue("Har ikke v{fhi::nb$aa}rt i kontakt med lege")]
+
+
+  setnames(
+    d,
+    c(
+      "",
+      "Kvinner",
+      "Menn",
+      "Alle"
+    )
+  )
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task=="data_covid19_daily_report") %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+
