@@ -330,9 +330,9 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_hospital_main_cause"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye Sykehusinnleggelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye sykehusinnleggelser"))
   } else {
-    setnames(d, c(glue::glue("Date"), "Cumulative cases", "New Hospital admissions"))
+    setnames(d, c(glue::glue("Date"), "Cumulative cases", "New hospital admissions"))
   }
 
 
@@ -374,9 +374,9 @@ function(req, res, api_key, lang="nb", granularity_time="day", location_code="no
   setcolorder(d,c("date","cum_n","n_icu"))
 
   if(lang=="nb"){
-    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Sykehusinnleggelser"))
+    setnames(d, c(glue::glue("Dato"), "Kumulativt antall", "Nye sykehusinnleggelser"))
   } else {
-    setnames(d, c(glue::glue("Date"), "Cumulative cases", "ICU admissions"))
+    setnames(d, c(glue::glue("Date"), "Cumulative cases", "New ICU admissions"))
   }
 
 
