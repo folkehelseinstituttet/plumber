@@ -1,5 +1,5 @@
-##* WHEN DEBUGGING, START RUNNING HERE
-##* THIS LOADS UP YOUR DATABASE
+## WHEN DEBUGGING, START RUNNING HERE
+## THIS LOADS UP YOUR DATABASE
 
 library(pool)
 library(data.table)
@@ -58,7 +58,7 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
 }
 DBI::dbExecute(pool, glue::glue({"USE {db_config$db};"}))
 
-##* WHEN DEBUGGING, STOP RUNNING HERE
+## WHEN DEBUGGING, STOP RUNNING HERE
 
 
 #* Filter that grabs the "username" querystring parameter.
@@ -66,26 +66,26 @@ DBI::dbExecute(pool, glue::glue({"USE {db_config$db};"}))
 #* this shows the principles involved.
 #* @filter auth-user
 function(req, username=""){
-  #* Since username is a querystring param, we can just
-  #* expect it to be available as a parameter to the
-  #* filter (plumber magic).
+  # Since username is a querystring param, we can just
+  # expect it to be available as a parameter to the
+  # filter (plumber magic).
 
   req$valid_key <- FALSE
 
   api_key <- req$args$api_key
 
   if (is.null(api_key)){
-    #* No username provided
+    # No username provided
     #stop("No api_key provided")
   } else if (api_key %in% valid_api_keys){
-    #* username is valid
+    # username is valid
     req$valid_key <- TRUE
   } else {
-    #* username was provided, but invalid
+    # username was provided, but invalid
     #stop("No such username: ", username)
   }
 
-  #* Continue on
+  # Continue on
   forward()
 }
 
@@ -93,15 +93,15 @@ function(req, username=""){
 #* @filter require-auth
 function(req, res){
   if (is.null(req$valid_key)){
-    #* User isn't logged in
-    res$status <- 401 #* Unauthorized
+    # User isn't logged in
+    res$status <- 401 # Unauthorized
     list(error="You must login to access this resource.")
   } else if(req$valid_key==FALSE){
-    #* User isn't logged in
-    res$status <- 401 #* Unauthorized
+    # User isn't logged in
+    res$status <- 401 # Unauthorized
     list(error="You must login to access this resource.")
   } else {
-    #* user is logged in. Move on...
+    # user is logged in. Move on...
     forward()
   }
 }
