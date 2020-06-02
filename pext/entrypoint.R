@@ -3,7 +3,10 @@ library(plumber)
 highcharts <- function(){
   function(val, req, res, errorHandler){
     tryCatch({
-      if(inherits(val, "list")){
+      include_last_modified <- FALSE
+      include_available_time <- FALSE
+
+      if(inherits(val, "list") & "last_modified" %in% names(val)){
         # take out the date
         last_modified <- val$last_modified
 
@@ -45,12 +48,17 @@ highcharts <- function(){
         )
 
         include_last_modified <- TRUE
-
-        # get val out
-        val <- val$data
-      } else {
-        include_last_modified <- FALSE
       }
+
+      if(inherits(val, "list") & "available_time" %in% names(val)){
+        # take out the date
+        available_time <- paste0(val$available_time, collapse=", ")
+
+        include_available_time <- TRUE
+      }
+
+      if(inherits(val, "list")) val <- val$data
+
       j1 <- jsonlite::toJSON(names(val), dataframe = c("values"))
       j2 <- jsonlite::toJSON(val, dataframe = c("values"))
       j2 <- stringr::str_remove(j2,"\\[")
@@ -59,6 +67,7 @@ highcharts <- function(){
 
       res$setHeader("Content-Type", "application/json")
       if(include_last_modified) res$setHeader("Last-Modified", last_modified)
+      if(include_available_time) res$setHeader("Available-Time", available_time)
       res$body <- j
 
       return(res$toResponse())
