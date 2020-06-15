@@ -165,7 +165,6 @@ function(req, res, api_key, prelim=F){
 #* @param prelim TRUE or FALSE
 #* @param api_key api_key
 #* @get /model_icu_by_time_location
-#* @serializer highcharts
 function(req, res, api_key, prelim=FALSE){
 
   d <- pool %>% dplyr::tbl(
