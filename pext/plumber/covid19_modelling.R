@@ -104,10 +104,16 @@ function(req, res){
 }
 
 #* These are the locations and location names
+#* @param prelim TRUE or FALSE
 #* @param api_key api_key
 #* @get /model_msis_cases_by_time_location
-function(req, res, api_key){
-  d <- pool %>% dplyr::tbl("data_covid19_msis_by_time_location") %>%
+function(req, res, api_key, prelim=F){
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "prelim_data_covid19_msis_by_time_location",
+      "data_covid19_msis_by_time_location"
+    )) %>%
     dplyr::filter(granularity_time == "day") %>%
     dplyr::filter(granularity_geo == "county") %>%
     dplyr::select(location_code, date, n) %>%
@@ -129,5 +135,52 @@ function(req, res, api_key){
     dplyr::select(location_code, date, n, consult_with_influenza) %>%
     dplyr::collect()
   setDT(d)
+  d
+}
+
+#* (G) model_hospital_by_time_location ----
+#* @param prelim TRUE or FALSE
+#* @param api_key api_key
+#* @get /model_hospital_by_time_location
+function(req, res, api_key, prelim=F){
+
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "prelim_data_covid19_hospital_by_time",
+      "data_covid19_hospital_by_time"
+    )) %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(granularity_geo %in% c("nation")) %>%
+    dplyr::select(date, n_hospital_main_cause) %>%
+    dplyr::collect()
+  setDT(d)
+  d[,date:=as.Date(date)]
+  setorder(d, date)
+
+  d
+}
+
+#* (I) hc_icu_by_time_location ----
+#* @param prelim TRUE or FALSE
+#* @param api_key api_key
+#* @get /model_icu_by_time_location
+#* @serializer highcharts
+function(req, res, api_key, prelim=FALSE){
+
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "prelim_data_covid19_hospital_by_time",
+      "data_covid19_hospital_by_time"
+    )) %>%
+    dplyr::filter(granularity_time == "day") %>%
+    dplyr::filter(granularity_geo %in% c("nation")) %>%
+    dplyr::select(date, n_icu) %>%
+    dplyr::collect()
+  setDT(d)
+  d[,date:=as.Date(date)]
+  setorder(d, date)
+
   d
 }
