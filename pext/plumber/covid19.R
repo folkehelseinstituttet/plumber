@@ -264,6 +264,225 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   }
 }
 
+#* dynamic text ----
+#* @param location_code location code ("norge" is a common choice)
+#* @param lang nb or en
+#* @param prelim TRUE or FALSE
+#* @param api_key api_key
+#* @get /hc_dynamic_text
+function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
+  stopifnot(prelim %in% c(T,F))
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  d <- pool %>% dplyr::tbl("data_covid19_dynamic_text") %>%
+     dplyr::select(tag_outcome,value) %>%
+     dplyr::collect()
+  setDT(d)
+
+  death_average_age <- d[tag_outcome=="death_average_age", value]
+  death_media_age   <- d[tag_outcome=="death_media_age", value]
+  death_pr100_male  <- d[tag_outcome=="death_pr100_male", value]
+  hospital_main_cause_average_age <- d[tag_outcome=="hospital_main_cause_average_age", value]
+  hospital_main_cause_pr100_male <- d[tag_outcome=="hospital_main_cause_pr100_male", value]
+  icu_main_cause_pr100   <- d[tag_outcome=="icu_main_cause_pr100", value]
+  msis_median_age  <- d[tag_outcome=="msis_median_age", value]
+  msis_n        <- d[tag_outcome=="msis_n", value]
+  msis_n_female   <- d[tag_outcome=="msis_n_female", value]
+  msis_n_male    <- d[tag_outcome=="msis_n_male", value]
+  msis_pr100_male <- d[tag_outcome=="msis_pr100_male", value]
+  n_death     <- d[tag_outcome=="n_death", value]
+  n_hospital_main_cause <- d[tag_outcome=="n_hospital_main_cause", value]
+  n_icu_main_cause <- d[tag_outcome=="n_icu_main_cause", value]
+  n_icu_main_cause_still_in_icu<- d[tag_outcome=="n_icu_main_cause_still_in_icu", value]
+
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::select("date") %>%
+    dplyr::collect()
+  last_mod <- last_mod$date
+  last_mod <- format.Date(last_mod, "%d/%m/%Y")
+
+  if(lang == "nb"){
+    retval <- list(
+      figures = rbind(
+        data.frame(
+          key = "msis_n",
+          number = msis_n,
+          description = "total msis",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "msis_pr100_male",
+          number = msis_pr100_male ,
+          description = "% male msis",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "msis_median_age",
+          number = msis_median_age ,
+          description = "media age msis",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "n_hospital_main_cause",
+          number = n_hospital_main_cause,
+          description = "Total hospitaled Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "hospital_main_cause_pr100_male",
+          number = hospital_main_cause_pr100_male,
+          description = "Proportion of male in hospitaled Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "hospital_main_cause_average_age",
+          number = hospital_main_cause_average_age,
+          description = "Mean age hospitaled Covid-19 as main causeaverage_age",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "n_icu_main_cause",
+          number = n_icu_main_cause,
+          description = "Total in icu Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "icu_main_cause_pr100",
+          number = icu_main_cause_pr100,
+          description = "Proportion of male in icu Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "n_icu_main_cause_still_in_icu",
+          number = n_icu_main_cause_still_in_icu,
+          description = "Total still in icu Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "n_death",
+          number = n_death,
+          description = "Total death",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "death_pr100_male",
+          number = death_pr100_male,
+          description = "Proportion of males among death",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "death_media_age",
+          number = death_media_age ,
+          description = "Median age death ",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "death_average_age",
+          number = death_average_age,
+          description = "Mean age death ",
+          updated = last_mod
+        )
+      )
+    )
+  } else {
+    retval <- list(
+      figures = rbind(
+        data.frame(
+          key = "msis_n",
+          number = msis_n,
+          description = "total msis",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "msis_pr100_male",
+          number = msis_pr100_male ,
+          description = "% male msis",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "msis_median_age",
+          number = msis_median_age ,
+          description = "media age msis",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "n_hospital_main_cause",
+          number = n_hospital_main_cause,
+          description = "Total hospitaled Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "hospital_main_cause_pr100_male",
+          number = hospital_main_cause_pr100_male,
+          description = "Proportion of male in hospitaled Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "hospital_main_cause_average_age",
+          number = hospital_main_cause_average_age,
+          description = "Mean age hospitaled Covid-19 as main causeaverage_age",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "icu_main_cause",
+          number = icu_main_cause,
+          description = "Total in icu Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "icu_main_cause_pr100",
+          number = icu_main_cause_pr100,
+          description = "Proportion of male in icu Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "n_icu_main_cause_still_in_icu",
+          number = n_icu_main_cause_still_in_icu,
+          description = "Total still in icu Covid-19 as main cause",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "n_death",
+          number = n_death,
+          description = "Total death",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "death_pr100_male",
+          number = death_pr100_male,
+          description = "Proportion of males among death",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "death_media_age",
+          number = death_media_age ,
+          description = "Median age death ",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "death_average_age",
+          number = death_average_age,
+          description = "Mean age death ",
+          updated = last_mod
+        )
+      )
+    )
+  }
+}
+
+
+
+
 #* (B) hc_lab_pos_neg_by_time ----
 #* Lab data
 #* @param location_code location_code ("norge")
