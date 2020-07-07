@@ -275,7 +275,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(location_code %in% c("norge"))
 
-  d <- pool %>% dplyr::tbl("data_covid19_dynamic_text") %>%
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "prelim_data_covid19_dynamic_text",
+      "data_covid19_dynamic_text"
+    )) %>%
      dplyr::select(tag_outcome,value) %>%
      dplyr::collect()
   setDT(d)
