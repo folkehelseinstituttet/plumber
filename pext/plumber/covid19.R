@@ -58,6 +58,35 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
 }
 DBI::dbExecute(pool, glue::glue({"USE {db_config$db};"}))
 
+mandatory_db_filter <- function(
+  .data,
+  granularity_time = NULL,
+  granularity_time_not = NULL,
+  granularity_geo = NULL,
+  granularity_geo_not = NULL,
+  age = NULL,
+  age_not = NULL,
+  sex = NULL,
+  sex_not = NULL
+){
+  retval <- .data
+
+  if(!is.null(granularity_time)) retval <- retval %>% dplyr::filter(granularity_time %in% !!granularity_time)
+  if(!is.null(granularity_time_not)) retval <- retval %>% dplyr::filter(!granularity_time %in% !!granularity_time_not)
+
+  if(!is.null(granularity_geo)) retval <- retval %>% dplyr::filter(granularity_geo %in% !!granularity_geo)
+  if(!is.null(granularity_geo_not)) retval <- retval %>% dplyr::filter(!granularity_geo %in% !!granularity_geo_not)
+
+  if(!is.null(age)) retval <- retval %>% dplyr::filter(age %in% !!age)
+  if(!is.null(age_not)) retval <- retval %>% dplyr::filter(!age %in% !!age_not)
+
+  if(!is.null(sex)) retval <- retval %>% dplyr::filter(sex %in% !!sex)
+  if(!is.null(sex_not)) retval <- retval %>% dplyr::filter(!sex %in% !!sex_not)
+
+  return(retval)
+}
+
+
 ## WHEN DEBUGGING, STOP RUNNING HERE
 
 
@@ -124,7 +153,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       "prelim_data_covid19_msis_by_time_location",
       "data_covid19_msis_by_time_location"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::summarize(n=sum(n)) %>%
     dplyr::collect()
@@ -138,7 +172,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       "prelim_data_covid19_hospital_by_time",
       "data_covid19_hospital_by_time"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::summarize(
       cum_n_icu = sum(n_icu),
@@ -158,7 +197,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       "prelim_data_covid19_lab_by_time",
       "data_covid19_lab_by_time"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::summarize(n = max(cum_n_tested)) %>%
     dplyr::collect()
@@ -171,6 +215,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       "prelim_data_covid19_deaths",
       "data_covid19_deaths"
     )) %>%
+    mandatory_db_filter(
+      granularity_time = "total",
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::collect()
   cum_n_deaths <- val$cum_n
@@ -506,7 +556,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
       "prelim_data_covid19_lab_by_time",
       "data_covid19_lab_by_time"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(date, n_neg, n_pos, pr100_pos) %>%
     dplyr::collect()
@@ -565,7 +620,12 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
       "prelim_data_covid19_msis_by_time_location",
       "data_covid19_msis_by_time_location"
     )) %>%
-    dplyr::filter(granularity_time == !!granularity_time) %>%
+    mandatory_db_filter(
+      granularity_time = granularity_time,
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(yrwk, date, n) %>%
     dplyr::collect()
@@ -626,7 +686,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
         "prelim_data_covid19_msis_by_time_sex_age",
         "data_covid19_msis_by_time_sex_age"
       )) %>%
-      dplyr::filter(granularity_time == "total") %>%
+      mandatory_db_filter(
+        granularity_time = "total",
+        granularity_geo = NULL,
+        age_not = "total",
+        sex_not = "total"
+      ) %>%
       dplyr::filter(location_code== !!location_code) %>%
       dplyr::select(age, sex, n) %>%
       dplyr::collect()
@@ -637,6 +702,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
         "prelim_data_covid19_msis_by_time_sex_age",
         "data_covid19_msis_by_time_sex_age"
       )) %>%
+      mandatory_db_filter(
+        granularity_time = "week",
+        granularity_geo = NULL,
+        age_not = "total",
+        sex_not = "total"
+      ) %>%
       dplyr::filter(yrwk == !!yrwk) %>%
       dplyr::filter(location_code== !!location_code) %>%
       dplyr::select(age, sex, n) %>%
@@ -650,6 +721,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
       "prelim_data_covid19_msis_by_time_sex_age",
       "data_covid19_msis_by_time_sex_age"
     )) %>%
+    mandatory_db_filter(
+      granularity_time = "week",
+      granularity_geo = NULL,
+      age = NULL,
+      sex = NULL
+    ) %>%
     dplyr::filter(granularity_time == "week") %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::distinct(yrwk) %>%
@@ -711,8 +788,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
       "prelim_data_covid19_msis_by_time_location",
       "data_covid19_msis_by_time_location"
     )) %>%
-    dplyr::filter(granularity_time== "week") %>%
-    dplyr::filter(granularity_geo== !!granularity_geo) %>%
+    mandatory_db_filter(
+      granularity_time = "week",
+      granularity_geo = granularity_geo,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::group_by(location_code) %>%
     dplyr::summarize(n=sum(n)) %>%
     dplyr::collect()
@@ -788,7 +869,12 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
       "prelim_data_covid19_hospital_by_time",
       "data_covid19_hospital_by_time"
     )) %>%
-    dplyr::filter(granularity_time == !!granularity_time) %>%
+    mandatory_db_filter(
+      granularity_time = granularity_time,
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(date, n_hospital_main_cause) %>%
     dplyr::collect()
@@ -837,7 +923,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
       "prelim_data_covid19_hospital_by_time",
       "data_covid19_hospital_by_time"
     )) %>%
-    dplyr::filter(granularity_time == !!granularity_time) %>%
+    mandatory_db_filter(
+      granularity_time = granularity_time,
+      granularity_geo = NULL,
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(date, n_icu) %>%
     dplyr::collect()
@@ -887,11 +978,14 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       "prelim_data_covid19_demographics",
       "data_covid19_demographics"
     )) %>%
-    dplyr::filter(granularity_time == "total") %>%
-    dplyr::filter(tag_outcome == "death") %>%
-    dplyr::filter(age != "total") %>%
-    dplyr::filter(sex != "total") %>%
+    mandatory_db_filter(
+      granularity_time = "total",
+      granularity_geo = NULL,
+      age_not = "total",
+      sex_not = "total"
+    ) %>%
     dplyr::filter(location_code== !!location_code) %>%
+    dplyr::filter(tag_outcome == "death") %>%
     dplyr::select(age, sex, n) %>%
     dplyr::collect()
 

@@ -55,6 +55,33 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
 }
 DBI::dbExecute(pool, glue::glue({"USE {db_config$db};"}))
 
+mandatory_db_filter <- function(
+  .data,
+  granularity_time = NULL,
+  granularity_time_not = NULL,
+  granularity_geo = NULL,
+  granularity_geo_not = NULL,
+  age = NULL,
+  age_not = NULL,
+  sex = NULL,
+  sex_not = NULL
+){
+  retval <- .data
+
+  if(!is.null(granularity_time)) retval <- retval %>% dplyr::filter(granularity_time %in% !!granularity_time)
+  if(!is.null(granularity_time_not)) retval <- retval %>% dplyr::filter(!granularity_time %in% !!granularity_time_not)
+
+  if(!is.null(granularity_geo)) retval <- retval %>% dplyr::filter(granularity_geo %in% !!granularity_geo)
+  if(!is.null(granularity_geo_not)) retval <- retval %>% dplyr::filter(!granularity_geo %in% !!granularity_geo_not)
+
+  if(!is.null(age)) retval <- retval %>% dplyr::filter(age %in% !!age)
+  if(!is.null(age_not)) retval <- retval %>% dplyr::filter(!age %in% !!age_not)
+
+  if(!is.null(sex)) retval <- retval %>% dplyr::filter(sex %in% !!sex)
+  if(!is.null(sex_not)) retval <- retval %>% dplyr::filter(!sex %in% !!sex_not)
+
+  return(retval)
+}
 
 
 
@@ -114,8 +141,13 @@ function(req, res, api_key, prelim=F){
       "prelim_data_covid19_msis_by_time_location",
       "data_covid19_msis_by_time_location"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
-    dplyr::filter(granularity_geo == "county") %>%
+
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = "county",
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::select(location_code, date, n) %>%
     dplyr::collect()
   setDT(d)
@@ -127,14 +159,18 @@ function(req, res, api_key, prelim=F){
 #* @get /model_norsyss_covid19_by_time_location
 function(req, res, api_key){
   d <- pool %>% dplyr::tbl("data_norsyss") %>%
-    dplyr::filter(granularity_time == "day") %>%
-    dplyr::filter(granularity_geo %in% c("nation","county")) %>%
-    dplyr::filter(age %in% c("total")) %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = c("nation","county"),
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::filter(tag_outcome %in% "covid19_vk_ote") %>%
     dplyr::filter(date >= "2020-03-09") %>%
     dplyr::select(location_code, date, n, consult_with_influenza) %>%
     dplyr::collect()
   setDT(d)
+  setorder(d,location_code,date)
   d
 }
 
@@ -150,8 +186,12 @@ function(req, res, api_key, prelim=F){
       "prelim_data_covid19_hospital_by_time",
       "data_covid19_hospital_by_time"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
-    dplyr::filter(granularity_geo %in% c("nation")) %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = "nation",
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::select(date, n_hospital_main_cause) %>%
     dplyr::collect()
   setDT(d)
@@ -173,8 +213,12 @@ function(req, res, api_key, prelim=FALSE){
       "prelim_data_covid19_hospital_by_time",
       "data_covid19_hospital_by_time"
     )) %>%
-    dplyr::filter(granularity_time == "day") %>%
-    dplyr::filter(granularity_geo %in% c("nation")) %>%
+    mandatory_db_filter(
+      granularity_time = "day",
+      granularity_geo = "nation",
+      age = "total",
+      sex = "total"
+    ) %>%
     dplyr::select(date, n_icu) %>%
     dplyr::collect()
   setDT(d)
