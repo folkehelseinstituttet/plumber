@@ -169,8 +169,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time",
-      "data_covid19_hospital_by_time"
+      "prelim_data_covid19_hospital_by_time_location",
+      "data_covid19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -194,8 +194,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   n_lab <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_lab_by_time",
-      "data_covid19_lab_by_time"
+      "prelim_data_covid19_lab_by_time_location",
+      "data_covid19_lab_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -212,8 +212,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_deaths",
-      "data_covid19_deaths"
+      "prelim_data_covid19_death_by_time",
+      "data_covid19_death_by_time"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -553,8 +553,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_lab_by_time",
-      "data_covid19_lab_by_time"
+      "prelim_data_covid19_lab_by_time_location",
+      "data_covid19_lab_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -866,8 +866,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time",
-      "data_covid19_hospital_by_time"
+      "prelim_data_covid19_hospital_by_time_location",
+      "data_covid19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -920,8 +920,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time",
-      "data_covid19_hospital_by_time"
+      "prelim_data_covid19_hospital_by_time_location",
+      "data_covid19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
