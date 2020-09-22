@@ -223,7 +223,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::collect()
-  cum_n_deaths <- val$cum_n
+  setDT(val)
+  cum_n_deaths <- val$n
   cum_n_deaths
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
