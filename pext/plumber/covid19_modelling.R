@@ -183,8 +183,8 @@ function(req, res, api_key, prelim=F){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time",
-      "data_covid19_hospital_by_time"
+      "prelim_data_covid19_hospital_by_time_location",
+      "data_covid19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -210,8 +210,8 @@ function(req, res, api_key, prelim=FALSE){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time",
-      "data_covid19_hospital_by_time"
+      "prelim_data_covid19_hospital_by_time_location",
+      "data_covid19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
