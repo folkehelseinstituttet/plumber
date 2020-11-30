@@ -188,7 +188,7 @@ function(req, res, api_key, prelim=F){
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
-      granularity_geo = "nation",
+      granularity_geo = c("nation", "county"),
       age = "total",
       sex = "total"
     ) %>%
