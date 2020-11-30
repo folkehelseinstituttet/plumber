@@ -192,11 +192,11 @@ function(req, res, api_key, prelim=F){
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::select(date, n_hospital_main_cause) %>%
+    dplyr::select(location_code, date, n_hospital_main_cause) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
-  setorder(d, date)
+  setorder(d, location_code, date)
 
   d
 }
