@@ -228,7 +228,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   cum_n_deaths
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("date") %>%
     dplyr::collect()
   last_mod <- last_mod$date
@@ -355,7 +355,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("date") %>%
     dplyr::collect()
   last_mod <- last_mod$date
@@ -585,7 +585,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -656,7 +656,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -758,7 +758,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -840,7 +840,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -895,7 +895,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -949,7 +949,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1015,7 +1015,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1459,7 +1459,7 @@ function(req, res, api_key, lang="nb", location_code, v=1){
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report","data_covid19_daily_report")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
