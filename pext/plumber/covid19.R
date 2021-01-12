@@ -1072,25 +1072,25 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d[, cum_forste := cumsum(forste)]
   d[, cum_andre := cumsum(andre)]
 
-  setcolorder(d,c("yrwk", "date","cum_forste","forste","cum_andre","andre"))
+  setcolorder(d,c("yrwk", "date","cum_forste","cum_andre","forste","andre"))
   if(granularity_time=="day"){
     d[, yrwk:=NULL]
 
     if(lang=="nb"){
       setnames(d, c(
         glue::glue("Dato"),
-        "Antall personer vaksinert med 1.dose",
         "Kumulativt antall personer vaksinert med 1.dose",
-        "Antall personer vaksinert med 2.dose",
-        "Kumulativt antall personer vaksinert med 2.dose"
+        "Kumulativt antall personer vaksinert med 2.dose",
+        "Antall personer vaksinert med 1.dose",
+        "Antall personer vaksinert med 2.dose"
       ))
     } else {
       setnames(d, c(
         glue::glue("Dato"),
-        "Number of people vaccinated with first dose",
         "Cumulative number of people vaccinated with first dose",
-        "Number of people vaccinated with second dose",
-        "Cumulative number of people vaccinated with second dose"
+        "Cumulative number of people vaccinated with second dose",
+        "Number of people vaccinated with first dose",
+        "Number of people vaccinated with second dose"
       ))
     }
   } else {
@@ -1099,18 +1099,18 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
     if(lang=="nb"){
       setnames(d, c(
         glue::glue("Uke"),
-        "Antall personer vaksinert med 1.dose",
         "Kumulativt antall personer vaksinert med 1.dose",
-        "Antall personer vaksinert med 2.dose",
-        "Kumulativt antall personer vaksinert med 2.dose"
+        "Kumulativt antall personer vaksinert med 2.dose",
+        "Antall personer vaksinert med 1.dose",
+        "Antall personer vaksinert med 2.dose"
       ))
     } else {
       setnames(d, c(
         glue::glue("Uke"),
-        "Number of people vaccinated with first dose",
         "Cumulative number of people vaccinated with first dose",
-        "Number of people vaccinated with second dose",
-        "Cumulative number of people vaccinated with second dose"
+        "Cumulative number of people vaccinated with second dose",
+        "Number of people vaccinated with first dose",
+        "Number of people vaccinated with second dose"
       ))
     }
   }
