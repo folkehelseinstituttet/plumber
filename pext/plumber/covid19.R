@@ -1164,21 +1164,6 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
 
   setorder(d,-n)
 
-  if(measure=="pr100000"){
-    x_pop <- fhidata::norway_population_b2020[
-      year==2020,
-      .(pop=sum(pop)),
-      keyby=.(location_code)
-    ]
-    d[
-      x_pop,
-      on="location_code",
-      pop:=pop
-    ]
-    d[,n:=round(100000*n/pop,1)]
-    d[,pop:=NULL]
-  }
-
   if(granularity_geo=="county"){
     d[
       fhidata::norway_locations_long_b2020,
