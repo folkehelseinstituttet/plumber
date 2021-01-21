@@ -1126,6 +1126,90 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   )
 }
 
+#* (M) hc_sysvak_by_age_sex ----
+#* @param location_code location code ("norge" is a common choice)
+#* @param lang nb or en
+#* @param prelim TRUE or FALSE
+#* @param api_key api_key
+#* @get /hc_sysvak_by_age_sex
+#* @serializer highcharts
+function(req, res, api_key, prelim=F, lang="nb", location_code="norge"){
+  stopifnot(prelim %in% c(T,F))
+  stopifnot(lang %in% c("nb", "en"))
+
+  # valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
+  # valid_locations <- stringr::str_remove(valid_locations, "county")
+  # valid_locations <- c("norge", valid_locations)
+  # stopifnot(location_code %in% valid_locations)
+  #
+  # if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
+
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "prelim_data_covid19_sysvak_by_sex_age",
+      "data_covid19_sysvak_by_sex_age"
+    )) %>%
+    mandatory_db_filter(
+      granularity_time = NULL,
+      granularity_geo = NULL,
+      age = NULL,
+      sex = NULL
+    ) %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(sex, age, n, n_dose) %>%
+    dplyr::collect()
+  setDT(d)
+  d[]
+
+  d <- dcast.data.table(
+    d,
+    age~n_dose+sex,
+    value.var = c("n")
+  )
+
+  setcolorder(d, c("age",
+                   "1.dose_female",
+                   "2.dose_female",
+                   "1.dose_male",
+                   "2.dose_male"))
+  setnames(
+    d,
+    c(
+      "Aldersgrupper",
+      "Kvinner 1.dose",
+      "Kvinner 2.dose",
+      "Menn 1.dose",
+      "Menn 2.dose"
+    )
+  )
+
+  if(lang=="en"){
+    setnames(
+      d,
+      c(
+        "Age group",
+        "Women first dose",
+        "Women second dose",
+        "Men first dose",
+        "Men second dose"
+      )
+    )
+  }
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
 #* (N/O/P/Q) hc_sysvak_map -----
 #* Map of MSIS incidence
 #* @param dose_number 1 or 2
