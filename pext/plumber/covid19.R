@@ -1133,22 +1133,22 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
 #* @param api_key api_key
 #* @get /hc_sysvak_by_age_sex
 #* @serializer highcharts
-function(req, res, api_key, prelim=F, lang="nb", location_code="norge"){
+function(req, res, api_key, prelim=F, lang="nb", location_code){
   stopifnot(prelim %in% c(T,F))
   stopifnot(lang %in% c("nb", "en"))
 
-  # valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
-  # valid_locations <- stringr::str_remove(valid_locations, "county")
+  valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
+  valid_locations <- stringr::str_remove(valid_locations, "county")
   valid_locations <- "norge"
   stopifnot(location_code %in% valid_locations)
-  #
-  # if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
+
+  if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
 
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_sysvak_by_sex_age",
-      "data_covid19_sysvak_by_sex_age"
+      "prelim_data_covid19_sysvak_by_sex_age_location",
+      "data_covid19_sysvak_by_sex_age_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = NULL,
