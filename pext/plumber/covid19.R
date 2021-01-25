@@ -1126,12 +1126,12 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   )
 }
 
-#* (R) hc_sysvak_by_age_sex ----
+#* (R) hc_sysvak_by_age_sex_location ----
 #* @param location_code location code ("norge" is a common choice)
 #* @param lang nb or en
 #* @param prelim TRUE or FALSE
 #* @param api_key api_key
-#* @get /hc_sysvak_by_age_sex
+#* @get /hc_sysvak_by_age_sex_location
 #* @serializer highcharts
 function(req, res, api_key, prelim=F, lang="nb", location_code){
   stopifnot(prelim %in% c(T,F))
@@ -1139,7 +1139,8 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
 
   valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
   valid_locations <- stringr::str_remove(valid_locations, "county")
-  valid_locations <- "norge"
+  valid_locations <- c("norge", valid_locations)
+
   stopifnot(location_code %in% valid_locations)
 
   if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
