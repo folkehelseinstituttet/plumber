@@ -1169,6 +1169,8 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
     value.var = c("n")
   )
 
+  d[,age:=gsub("-", "\\1 - \\2", age)]
+
   setcolorder(d, c("age",
                    "1.dose_female",
                    "2.dose_female",
