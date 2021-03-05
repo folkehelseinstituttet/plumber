@@ -568,11 +568,10 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n_neg, n_pos) %>%
+    dplyr::select(date, n_neg, n_pos,pr100_pos) %>%
     dplyr::collect()
   setDT(d)
 
-  d[,pr100_pos := round(100*n_pos/(n_pos+n_neg),1)]
 
   if(lang=="nb"){
     setnames(d, c(
