@@ -150,8 +150,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_msis_by_time_location",
-      "data_covid19_msis_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_msis_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_msis_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -160,7 +160,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::summarize(n=sum(n)) %>%
+    dplyr::summarize(n=sum(n_pr)) %>%
     dplyr::collect()
   cum_n_msis <- val$n
   cum_n_msis
@@ -169,8 +169,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time_location",
-      "data_covid19_hospital_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_hospital_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -194,8 +194,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   n_lab <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_lab_by_time",
-      "data_covid19_lab_by_time"
+      "fhino_api_covid19_control_data_autoc19_lab_by_time",
+      "fhino_api_covid19_production_data_autoc19_lab_by_time"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -204,7 +204,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::summarize(n = max(cum_n_tested)) %>%
+    dplyr::summarize(n = sum(n_tested)) %>%
     dplyr::collect()
   n_lab <- n_lab$n
   n_lab
@@ -212,8 +212,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_death_by_time",
-      "data_covid19_death_by_time"
+      "fhino_api_covid19_control_data_autoc19_death_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_death_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -228,10 +228,10 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   cum_n_deaths
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
-    dplyr::select("date") %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::select("datetime") %>%
     dplyr::collect()
-  last_mod <- last_mod$date
+  last_mod <- last_mod$datetime
   last_mod <- format.Date(last_mod, "%d/%m/%Y")
 
   if(lang == "nb"){
@@ -339,9 +339,12 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   death_average_age <- d[tag_outcome=="death_average_age", value]
   death_media_age   <- d[tag_outcome=="death_media_age", value]
   death_pr100_male  <- d[tag_outcome=="death_pr100_male", value]
+
   hospital_main_cause_average_age <- d[tag_outcome=="hospital_main_cause_average_age", value]
   hospital_main_cause_pr100_male <- d[tag_outcome=="hospital_main_cause_pr100_male", value]
+
   icu_main_cause_pr100   <- d[tag_outcome=="icu_main_cause_pr100", value]
+
   msis_median_age  <- d[tag_outcome=="msis_median_age", value]
   msis_n        <- d[tag_outcome=="msis_n", value]
   msis_n_female   <- d[tag_outcome=="msis_n_female", value]
@@ -554,8 +557,9 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_lab_by_time",
-      "data_covid19_lab_by_time"
+      "fhino_api_covid19_control_data_autoc19_lab_by_time",
+      "fhino_api_covid19_production_data_autoc19_lab_by_time"
+
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -564,9 +568,11 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n_neg, n_pos, pr100_pos) %>%
+    dplyr::select(date, n_neg, n_pos) %>%
     dplyr::collect()
   setDT(d)
+
+  d[,pr100_pos := round(100*n_pos/(n_pos+n_neg),1)]
 
   if(lang=="nb"){
     setnames(d, c(
@@ -585,7 +591,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -618,8 +624,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_msis_by_time_location",
-      "data_covid19_msis_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_msis_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_msis_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -628,15 +634,15 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(yrwk, date, n) %>%
+    dplyr::select(yrwk, date, n_pr) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
   setorder(d, date)
 
-  d[,cum_n := cumsum(n)]
+  d[,cum_n_pr := cumsum(n_pr)]
 
-  setcolorder(d,c("yrwk", "date","cum_n","n"))
+  setcolorder(d,c("yrwk", "date","cum_n_pr","n_pr"))
   if(granularity_time=="day"){
     d[, yrwk:=NULL]
 
@@ -656,7 +662,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -684,24 +690,25 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
     d <- pool %>% dplyr::tbl(
       ifelse(
         prelim,
-        "prelim_data_covid19_msis_by_time_sex_age",
-        "data_covid19_msis_by_time_sex_age"
+        "fhino_api_covid19_control_data_autoc19_msis_by_time_sex_age_API",
+        "fhino_api_covid19_production_data_autoc19_msis_by_time_sex_age_API"
       )) %>%
       mandatory_db_filter(
         granularity_time = "total",
         granularity_geo = NULL,
         age_not = "total",
-        sex_not = "total"
+        sex_not = "total",
       ) %>%
       dplyr::filter(location_code== !!location_code) %>%
       dplyr::select(age, sex, n) %>%
       dplyr::collect()
+
   } else {
     d <- pool %>% dplyr::tbl(
       ifelse(
         prelim,
-        "prelim_data_covid19_msis_by_time_sex_age",
-        "data_covid19_msis_by_time_sex_age"
+        "fhino_api_covid19_control_data_autoc19_msis_by_time_sex_age_API",
+        "fhino_api_covid19_production_data_autoc19_msis_by_time_sex_age_API"
       )) %>%
       mandatory_db_filter(
         granularity_time = "week",
@@ -719,8 +726,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
   available_time <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_msis_by_time_sex_age",
-      "data_covid19_msis_by_time_sex_age"
+      "fhino_api_covid19_control_data_autoc19_msis_by_time_sex_age",
+      "fhino_api_covid19_production_data_autoc19_msis_by_time_sex_age"
     )) %>%
     mandatory_db_filter(
       granularity_time = "week",
@@ -758,7 +765,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -786,8 +793,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_msis_by_time_location",
-      "data_covid19_msis_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_msis_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_msis_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "week",
@@ -796,7 +803,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
       sex = "total"
     ) %>%
     dplyr::group_by(location_code) %>%
-    dplyr::summarize(n=sum(n)) %>%
+    dplyr::summarize(n=sum(n_pr)) %>%
     dplyr::collect()
   setDT(d)
 
@@ -840,7 +847,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -867,8 +874,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time_location",
-      "data_covid19_hospital_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_hospital_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -895,7 +902,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -921,8 +928,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_hospital_by_time_location",
-      "data_covid19_hospital_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_hospital_by_time_location",
+      "fhino_api_covid19_production_data_autoc19_hospital_by_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -949,7 +956,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -976,8 +983,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_demographics",
-      "data_covid19_demographics"
+      "fhino_api_covid19_control_data_autoc19_demographics",
+      "fhino_api_covid19_production_data_autoc19_demographics"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -1015,7 +1022,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1048,8 +1055,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_sysvak_by_time_location",
-      "data_covid19_sysvak_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
+      "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -1058,15 +1065,18 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(yrwk, date, n, dosenummer) %>%
+    dplyr::select(yrwk, date, n, n_dose) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
   setorder(d, date)
 
+  d[n_dose=="partly", n_dose:="forste"]
+  d[n_dose=="full", n_dose:="andre"]
+
   d <- dcast.data.table(
     d,
-    yrwk + date ~ dosenummer,
+    yrwk + date ~ n_dose,
     value.var = "n"
   )
   d[, cum_forste := cumsum(forste)]
@@ -1116,7 +1126,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1148,20 +1158,22 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_sysvak_by_sex_age_location",
-      "data_covid19_sysvak_by_sex_age_location"
+      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location",
+      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location"
     )) %>%
     mandatory_db_filter(
-      granularity_time = NULL,
+      granularity_time = "total",
       granularity_geo = NULL,
-      age = NULL,
-      sex = NULL
+      age_not = "total",
+      sex_not = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::select(sex, age, n, n_dose) %>%
     dplyr::collect()
   setDT(d)
-  d[]
+  d <-d[age!="0-15"]
+  d[n_dose=="partly", n_dose:="1.dose"]
+  d[n_dose=="full", n_dose:="2.dose"]
 
   d <- dcast.data.table(
     d,
@@ -1201,7 +1213,7 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1228,16 +1240,16 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
   stopifnot(dose_number %in% c(1, 2))
 
   if(dose_number==1){
-    dose_number <- "forste"
+    dose_number <- "partly"
   } else {
-    dose_number <- "andre"
+    dose_number <- "full"
   }
 
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "prelim_data_covid19_sysvak_by_time_location",
-      "data_covid19_sysvak_by_time_location"
+      "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
+      "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -1245,7 +1257,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::filter(dosenummer == !!dose_number) %>%
+    dplyr::filter(n_dose == !!dose_number) %>%
     dplyr::collect()
   setDT(d)
 
@@ -1274,7 +1286,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"prelim_data_covid19_daily_report_weekday","data_covid19_daily_report_weekday")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
