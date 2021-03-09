@@ -809,8 +809,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   setorder(d,-n)
 
   if(measure=="pr100000"){
-    x_pop <- fhidata::norway_population_b2020[
-      year==2020,
+    x_pop <- fhidata::norway_population_by_age_cats(cats = list(pop = c(0:200)))[
+      year==2021,
       .(pop=sum(pop)),
       keyby=.(location_code)
       ]
