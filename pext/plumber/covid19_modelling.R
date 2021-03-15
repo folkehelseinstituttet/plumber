@@ -136,14 +136,13 @@ function(req, res){
 #* @get /model_msis_cases_by_time_location
 function(req, res, api_key, prelim=F){
   d <- pool %>% dplyr::tbl("data_autoc19_msis_by_time_location") %>%
-
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = "county",
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::select(location_code, date, n) %>%
+    dplyr::select(location_code, date, n=n_pr) %>%
     dplyr::collect()
   setDT(d)
   d
