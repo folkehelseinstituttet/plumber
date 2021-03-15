@@ -135,12 +135,7 @@ function(req, res){
 #* @param api_key api_key
 #* @get /model_msis_cases_by_time_location
 function(req, res, api_key, prelim=F){
-  d <- pool %>% dplyr::tbl(
-    ifelse(
-      prelim,
-      "prelim_data_covid19_msis_by_time_location",
-      "data_covid19_msis_by_time_location"
-    )) %>%
+  d <- pool %>% dplyr::tbl("data_autoc19_msis_by_time_location") %>%
 
     mandatory_db_filter(
       granularity_time = "day",
@@ -180,12 +175,7 @@ function(req, res, api_key){
 #* @get /model_hospital_by_time_location
 function(req, res, api_key, prelim=F){
 
-  d <- pool %>% dplyr::tbl(
-    ifelse(
-      prelim,
-      "prelim_data_covid19_hospital_by_time_location",
-      "data_covid19_hospital_by_time_location"
-    )) %>%
+  d <- pool %>% dplyr::tbl("data_autoc19_hospital_by_time_location") %>%
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = c("nation", "county"),
@@ -207,12 +197,7 @@ function(req, res, api_key, prelim=F){
 #* @get /model_icu_by_time_location
 function(req, res, api_key, prelim=FALSE){
 
-  d <- pool %>% dplyr::tbl(
-    ifelse(
-      prelim,
-      "prelim_data_covid19_hospital_by_time_location",
-      "data_covid19_hospital_by_time_location"
-    )) %>%
+  d <- pool %>% dplyr::tbl("data_autoc19_hospital_by_time_location") %>%
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = "nation",
