@@ -1070,8 +1070,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d[,date:=as.Date(date)]
   setorder(d, date)
 
-  d[n_dose=="partly", n_dose:="forste"]
-  d[n_dose=="full", n_dose:="andre"]
+  d[n_dose=="1.dose", n_dose:="forste"]
+  d[n_dose=="2.dose", n_dose:="andre"]
 
   d <- dcast.data.table(
     d,
@@ -1171,8 +1171,8 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
     dplyr::collect()
   setDT(d)
   d <-d[age!="0-15"]
-  d[n_dose=="partly", n_dose:="1.dose"]
-  d[n_dose=="full", n_dose:="2.dose"]
+  d[n_dose=="1.dose", n_dose:="1.dose"]
+  d[n_dose=="2.dose", n_dose:="2.dose"]
 
   d <- dcast.data.table(
     d,
@@ -1239,9 +1239,9 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
   stopifnot(dose_number %in% c(1, 2))
 
   if(dose_number==1){
-    dose_number <- "partly"
+    dose_number <- "1.dose"
   } else {
-    dose_number <- "full"
+    dose_number <- "2.dose"
   }
 
   d <- pool %>% dplyr::tbl(
