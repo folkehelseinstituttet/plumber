@@ -572,6 +572,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
     dplyr::collect()
   setDT(d)
 
+  d<- d[date>="2020-04-01"]
 
   if(lang=="nb"){
     setnames(d, c(
