@@ -573,7 +573,6 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   setDT(d)
 
   d<- d[date>="2020-04-01"]
-  d[is.na(pr100_pos), pr100_pos:=0]
 
   if(lang=="nb"){
     setnames(d, c(
