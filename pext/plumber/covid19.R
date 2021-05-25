@@ -315,6 +315,141 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   }
 }
 
+
+#* key vaccination numbers ----
+#* @param location_code location code ("norge" is a common choice)
+#* @param lang nb or en
+#* @param prelim TRUE or FALSE
+#* @param api_key api_key
+#* @get /hc_key_vaccination_numbers
+function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
+  stopifnot(prelim %in% c(T,F))
+  stopifnot(lang %in% c("nb", "en"))
+  stopifnot(location_code %in% c("norge"))
+
+  # cum num cases
+  # d <- pool %>% dplyr::tbl(
+  #   ifelse(
+  #     prelim,
+  #     "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
+  #     "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
+  #   )) %>%
+  #   mandatory_db_filter(
+  #     granularity_time = "total",
+  #     granularity_geo = NULL,
+  #     age = "total",
+  #     sex = "total"
+  #   ) %>%
+  #   dplyr::filter(location_code== !!location_code) %>%
+  #   dplyr::select(yrwk, date, n, n_dose) %>%
+  #   dplyr::collect()
+  # setDT(d)
+  # d[,date:=as.Date(date)]
+  # setorder(d, date)
+  #
+  # cum_n_dose_1 <- d[n_dose=="1.dose", c(n)]
+  # cum_n_dose_2 <- d[n_dose=="2.dose", c(n)]
+
+
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location",
+      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location"
+    )) %>%
+    mandatory_db_filter(
+      granularity_time = "total",
+      granularity_geo = NULL,
+      age_not = "total",
+      sex = "total"
+    ) %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(yrwk, date, n, age, n_dose ,  age_and_older_cum_n,age_and_older_cum_pr100) %>%
+    dplyr::collect()
+  setDT(d)
+  cum_n_dose_1 <- d[age=="18-24" & n_dose=="1.dose",c(age_and_older_cum_n) ]
+  cum_n_dose_2 <- d[age=="18-24" & n_dose=="2.dose",c(age_and_older_cum_n) ]
+
+  cum_andel_dose_1 <- d[age=="18-24" & n_dose=="1.dose",c(age_and_older_cum_pr100) ]
+  cum_andel_dose_2 <- d[age=="18-24" & n_dose=="2.dose",c(age_and_older_cum_pr100) ]
+
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+  last_mod <- last_mod$datetime
+  last_mod <- format.Date(last_mod, "%d/%m/%Y")
+
+  if(lang == "nb"){
+    retval <- list(
+      figures = rbind(
+        data.frame(
+          key = "cum_n_dose_1",
+          number = cum_n_dose_1,
+          description = "Kumulativt antall personer vaksinert med 1.dose",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_n_dose_2",
+          number = cum_n_dose_2,
+          description = "Kumulativt antall personer vaksinert med 2.dose",
+          updated = last_mod
+        )
+        ,
+        data.frame(
+          key = "cum_andel_dose_1",
+          number = cum_andel_dose_1,
+          description = "Kumulativt andel personer vaksinert med 1.dose",
+          updated = last_mod
+        )
+        ,
+
+        data.frame(
+          key = "cum_andel_dose_2",
+          number = cum_andel_dose_2,
+          description = "Kumulativt andel personer vaksinert med 2.dose",
+          updated = last_mod
+        )
+      )
+    )
+  } else {
+    retval <- list(
+      figures = rbind(
+        data.frame(
+          key = "cum_n_dose_1",
+          number = cum_n_msis,
+          description = "Cumulative number of people vaccinated with first dose",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_n_dose_2",
+          number = cum_n_msis,
+          description = "Cumulative number of people vaccinated with second dose",
+          updated = last_mod
+        ),
+        data.frame(
+          key = "cum_andel_dose_1",
+          number = cum_andel_dose_1,
+          description = "Cumulative proportion of people vaccinated with first dose",
+          updated = last_mod
+        ),
+
+        data.frame(
+          key = "cum_andel_dose_2",
+          number = cum_andel_dose_2,
+          description = "Cumulative proportion of people vaccinated with second dose",
+          updated = last_mod
+        )
+      )
+    )
+  }
+}
+
+
+
 #* dynamic text ----
 #* @param location_code location code ("norge" is a common choice)
 #* @param lang nb or en
@@ -1171,7 +1306,7 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
     dplyr::select(sex, age, n, n_dose) %>%
     dplyr::collect()
   setDT(d)
-  d <-d[age!="0-15"]
+  d <-d[age!="00-15"]
   d[n_dose=="1.dose", n_dose:="1.dose"]
   d[n_dose=="2.dose", n_dose:="2.dose"]
 
@@ -1225,6 +1360,94 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
 
 
 
+
+#* (R) hc_sysvak_by_age_sex_pr100_location ----
+#* @param location_code location code ("norge" is a common choice)
+#* @param lang nb or en
+#* @param prelim TRUE or FALSE
+#* @param api_key api_key
+#* @get /hc_sysvak_by_age_sex_pr100_location
+#* @serializer highcharts
+function(req, res, api_key, prelim=F, lang="nb", location_code){
+  stopifnot(prelim %in% c(T,F))
+  stopifnot(lang %in% c("nb", "en"))
+
+  valid_locations <- c(unique(fhidata::norway_locations_b2020$county_code), unique(fhidata::norway_locations_b2020$municip_code))
+  valid_locations <- stringr::str_remove(valid_locations, "county")
+  valid_locations <- stringr::str_remove(valid_locations, "municip")
+
+  valid_locations <- c("norge", valid_locations)
+
+  stopifnot(location_code %in% valid_locations)
+
+  if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
+  if(stringr::str_length(location_code)==4) location_code <- paste0("municip",location_code)
+
+  d <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location",
+      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location"
+      )) %>%
+    mandatory_db_filter(
+      granularity_time = "total",
+      granularity_geo = NULL,
+      age_not = "total",
+      sex = "total"
+    ) %>%
+    dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(sex, age, cum_pr100, n_dose) %>%
+    dplyr::collect()
+  setDT(d)
+  d <-d[age!="00-15"]
+  d[n_dose=="1.dose", n_dose:="1.dose"]
+  d[n_dose=="2.dose", n_dose:="2.dose"]
+
+  d <- dcast.data.table(
+    d,
+    age~n_dose+sex,
+    value.var = c("cum_pr100")
+  )
+
+  d[,age:=gsub("-", "\\1 - \\2", age)]
+
+
+  setnames(
+    d,
+    c(
+      "Aldersgrupper",
+      "Kumulativt andel personer vaksinert med 1.dose",
+      "Kumulativt andel personer vaksinert med 2.dose"
+
+    )
+  )
+
+  if(lang=="en"){
+    setnames(
+      d,
+      c(
+        "Age group",
+        "Cumulative proportion of people vaccinated with first dose",
+        "Cumulative proportion of people vaccinated with second dose"
+      )
+    )
+  }
+
+  last_mod <- pool %>% dplyr::tbl("rundate") %>%
+    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::select("datetime") %>%
+    dplyr::collect()
+
+  list(
+    last_modified = last_mod$datetime,
+    data = d
+  )
+}
+
+
+
+
+
 #* (N/O/P/Q) hc_sysvak_map -----
 #* Map of MSIS incidence
 #* @param dose_number 1 or 2
@@ -1234,10 +1457,16 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
 #* @param api_key api_key
 #* @get /hc_sysvak_map
 #* @serializer highcharts
-function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", dose_number = 1){
+function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", measure=1,dose_number = 1){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(granularity_geo %in% c("county", "municip"))
   stopifnot(dose_number %in% c(1, 2))
+
+  if(measure==1){
+    measure_type <- "age_and_older_cum_n"
+  } else {
+    measure_type <- "age_and_older_cum_pr100"
+  }
 
   if(dose_number==1){
     dose_number <- "1.dose"
@@ -1245,21 +1474,43 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
     dose_number <- "2.dose"
   }
 
+  # d <- pool %>% dplyr::tbl(
+  #   ifelse(
+  #     prelim,
+  #     "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
+  #     "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
+  #   )) %>%
+  #   mandatory_db_filter(
+  #     granularity_time = "total",
+  #     granularity_geo = granularity_geo,
+  #     age = "total",
+  #     sex = "total"
+  #   ) %>%
+  #   dplyr::filter(n_dose == !!dose_number) %>%
+  #   dplyr::collect()
+  # setDT(d)
+
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
-      "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
+      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location",
+      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
       granularity_geo = granularity_geo,
-      age = "total",
+      age_not = "total",
       sex = "total"
     ) %>%
     dplyr::filter(n_dose == !!dose_number) %>%
+    dplyr::filter(age == "18-24") %>%
+    dplyr::select(yrwk, location_code,date, n, age, n_dose ,  age_and_older_cum_n,age_and_older_cum_pr100) %>%
+
     dplyr::collect()
   setDT(d)
+
+  d[,n:=get(measure_type)]
+
 
   setorder(d,-n)
 
