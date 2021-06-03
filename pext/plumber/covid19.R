@@ -367,8 +367,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
     dplyr::select(yrwk, date, n, age, n_dose ,  age_and_older_cum_n,age_and_older_cum_pr100) %>%
     dplyr::collect()
   setDT(d)
-  cum_n_dose_1 <- d[age=="18-24" & n_dose=="1.dose",c(age_and_older_cum_n) ]
-  cum_n_dose_2 <- d[age=="18-24" & n_dose=="2.dose",c(age_and_older_cum_n) ]
+  cum_n_dose_1 <- d[age=="00-15" & n_dose=="1.dose",c(age_and_older_cum_n) ]
+  cum_n_dose_2 <- d[age=="00-15" & n_dose=="2.dose",c(age_and_older_cum_n) ]
 
   cum_andel_dose_1 <- d[age=="18-24" & n_dose=="1.dose",c(age_and_older_cum_pr100) ]
   cum_andel_dose_2 <- d[age=="18-24" & n_dose=="2.dose",c(age_and_older_cum_pr100) ]
@@ -401,7 +401,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
         data.frame(
           key = "cum_andel_dose_1",
           number = cum_andel_dose_1,
-          description = "Andel (%) over 18 år vaksinert med 1.dose",
+          description = "Andel (%) 18 år og eldre vaksinert med 1.dose",
           updated = last_mod
         )
         ,
@@ -409,7 +409,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
         data.frame(
           key = "cum_andel_dose_2",
           number = cum_andel_dose_2,
-          description = "Andel (%) over 18 år vaksinert med 2.dose ",
+          description = "Andel (%) 18 år og eldre vaksinert med 2.dose",
           updated = last_mod
         )
       )
@@ -1206,6 +1206,9 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d[,date:=as.Date(date)]
   setorder(d, date)
 
+  d[n<5, n:=0]
+
+
   d[n_dose=="1.dose", n_dose:="forste"]
   d[n_dose=="2.dose", n_dose:="andre"]
 
@@ -1391,17 +1394,18 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
       sex_not = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(sex, age, n, n_dose) %>%
+    dplyr::select(sex, age, cum_n, n_dose) %>%
     dplyr::collect()
   setDT(d)
   d <-d[age!="00-15"]
+  d[cum_n<5, cum_n:=0]
   d[n_dose=="1.dose", n_dose:="1.dose"]
   d[n_dose=="2.dose", n_dose:="2.dose"]
 
   d <- dcast.data.table(
     d,
     age~n_dose+sex,
-    value.var = c("n")
+    value.var = c("cum_n")
   )
 
   d[,age:=gsub("-", "\\1 - \\2", age)]
@@ -1571,6 +1575,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
 
   setorder(d,-n)
 
+  d[n<5,n:=0]
+
   if(granularity_geo=="county"){
     d[
       fhidata::norway_locations_long_b2020,
@@ -1682,6 +1688,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
     d[, location_name := stringr::str_to_lower(location_name)]
 
     if(measure==1){
+      d[n<5, n:=0]
+
       d <- d[,.(
       Fylke = location_name,
       Antall = n
@@ -1696,6 +1704,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   } else if(granularity_geo=="municip"){
     d[, Kommunenr := stringr::str_remove(location_code,"municip")]
     if(measure==1){
+    d[n<5, n:=0]
+
     d <- d[,.(
       Kommunenr = Kommunenr,
       Antall = n
