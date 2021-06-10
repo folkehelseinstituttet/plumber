@@ -419,28 +419,28 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       figures = rbind(
         data.frame(
           key = "cum_n_dose_1",
-          number = cum_n_msis,
+          number = cum_n_dose_1,
           description = "Number of people vaccinated with first dose",
           updated = last_mod
         ),
 
         data.frame(
           key = "cum_n_dose_2",
-          number = cum_n_msis,
+          number = cum_n_dose_2,
           description = "Number of people vaccinated with second dose",
           updated = last_mod
         ),
         data.frame(
           key = "cum_andel_dose_1",
           number = cum_andel_dose_1,
-          description = "Proportion of people vaccinated with first dose",
+          description = "Proportion (%) 18 years or older vaccinated with first dose",
           updated = last_mod
         ),
 
         data.frame(
           key = "cum_andel_dose_2",
           number = cum_andel_dose_2,
-          description = "Proportion of people vaccinated with second dose",
+          description = "Proportion (%) 18 years or older vaccinated with second dose",
           updated = last_mod
         )
       )
