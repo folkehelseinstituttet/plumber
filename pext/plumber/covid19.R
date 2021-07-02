@@ -6,7 +6,7 @@ library(data.table)
 library(magrittr)
 library(ggplot2)
 
-if(.Platform$OS.type == "windows"){
+if(rstudioapi::isAvailable() & .Platform$OS.type == "unix"){
   valid_api_keys <- c("test")
 } else {
   apikeys <- readxl::read_excel("/sideloaded_data/apikeys.xlsx")
@@ -23,7 +23,20 @@ db_config <- list(
   password = Sys.getenv("DB_PASSWORD", "example")
 )
 
-if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
+if(rstudioapi::isAvailable() & .Platform$OS.type == "unix"){
+  # dev
+  library(sykdomspulsen)
+  db_config$server <- "dm-test"
+  db_config$db <- "Sykdomspulsen_surv"
+  pool <- dbPool(
+    drv = odbc::odbc(),
+    driver = db_config$driver,
+    server = "dm-test",
+    database = db_config$db,
+    port = db_config$port,
+    trusted_connection = "yes"
+  )
+} else if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
   # linux
   pool <- dbPool(
     drv = odbc::odbc(),
@@ -34,16 +47,6 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
     uid = db_config$user,
     Pwd = db_config$password#,
     #trusted_connection = "yes"
-  )
-} else if(db_config$driver %in% c("Sql Server")){
-  # windows
-  pool <- dbPool(
-    drv = odbc::odbc(),
-    driver = db_config$driver,
-    server = "dm-test",
-    database = db_config$db,
-    port = db_config$port,
-    trusted_connection = "yes"
   )
 } else {
   pool <- dbPool(
@@ -150,8 +153,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_msis_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_msis_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_msis_by_time_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_msis_by_time_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -160,7 +163,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::summarize(n=sum(n_pr)) %>%
+    dplyr::summarize(n=sum(cases_testdate_n)) %>%
     dplyr::collect()
   cum_n_msis <- val$n
   cum_n_msis
@@ -169,8 +172,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_hospital_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_hospital_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_hospital_icu_by_time_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_hospital_icu_by_time_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -180,8 +183,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
     dplyr::summarize(
-      cum_n_icu = sum(n_icu),
-      cum_n_hospital_main_cause = sum(n_hospital_main_cause)
+      cum_n_icu = sum(icu_cases_n),
+      cum_n_hospital_main_cause = sum(hospital_main_cases_n)
     ) %>%
     dplyr::collect()
   setDT(val)
@@ -194,8 +197,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   n_lab <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_lab_by_time",
-      "fhino_api_covid19_production_data_autoc19_lab_by_time"
+      "anon_api_fhino_covid19_control_covid19_autoreport_lab_by_time_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_lab_by_time_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "day",
@@ -204,7 +207,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::summarize(n = sum(n_tested)) %>%
+    dplyr::summarize(n = sum(tested_n )) %>%
     dplyr::collect()
   n_lab <- n_lab$n
   n_lab
@@ -212,8 +215,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   val <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_death_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_death_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_death_by_time_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_death_by_time_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -222,13 +225,14 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
+    dplyr::select(n = death_n) %>%
     dplyr::collect()
   setDT(val)
   cum_n_deaths <- val$n
   cum_n_deaths
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
   last_mod <- last_mod$datetime
@@ -354,8 +358,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location_v2",
-      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location_v2"
+      "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_age_sex_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_vaccination_by_time_age_sex_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -364,7 +368,15 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(yrwk, date, n, age, n_dose ,  age_and_older_cum_n,age_and_older_cum_pr100) %>%
+    dplyr::select(
+      yrwk = isoyearweek,
+      date,
+      n = vaccinated_n,
+      age,
+      n_dose = tag_dose ,
+      age_and_older_cum_n = age_and_older_vaccinated_cum_n,
+      age_and_older_cum_pr100 = age_and_older_vaccinated_cum_pr100
+      ) %>%
     dplyr::collect()
   setDT(d)
   cum_n_dose_1 <- d[age=="00-15" & n_dose=="1.dose",c(age_and_older_cum_n) ]
@@ -375,7 +387,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
   last_mod <- last_mod$datetime
@@ -692,8 +704,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_lab_by_time",
-      "fhino_api_covid19_production_data_autoc19_lab_by_time"
+      "anon_api_fhino_covid19_control_covid19_autoreport_lab_by_time_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_lab_by_time_data"
 
     )) %>%
     mandatory_db_filter(
@@ -703,9 +715,16 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n_neg, n_pos,pr100_pos) %>%
-    dplyr::collect()
-  setDT(d)
+    dplyr::select(
+      date,
+      n_neg = neg_n,
+      n_pos = pos_n,
+      pr100_pos = pos_pr100
+      ) %>%
+    dplyr::collect() %>%
+    data.table() %>%
+    setorder(date)
+  #d
 
   d<- d[date>="2020-04-01"]
 
@@ -726,7 +745,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code){
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -748,6 +767,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   stopifnot(prelim %in% c(T,F))
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(granularity_time %in% c("day","week"))
+  if(granularity_time=="week") granularity_time <- "isoweek"
 
   valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
   valid_locations <- stringr::str_remove(valid_locations, "county")
@@ -759,8 +779,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_msis_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_msis_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_msis_by_time_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_msis_by_time_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -769,7 +789,11 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(yrwk, date, n_pr) %>%
+    dplyr::select(
+      yrwk = isoyearweek,
+      date,
+      n_pr = cases_testdate_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
@@ -797,7 +821,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -825,35 +849,40 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
     d <- pool %>% dplyr::tbl(
       ifelse(
         prelim,
-        "fhino_api_covid19_control_data_autoc19_msis_by_time_sex_age_API",
-        "fhino_api_covid19_production_data_autoc19_msis_by_time_sex_age_API"
+        "anon_api_fhino_covid19_control_covid19_autoreport_msis_by_time_age_sex_data",
+        "anon_api_fhino_covid19_production_covid19_autoreport_msis_by_time_age_sex_data"
       )) %>%
       mandatory_db_filter(
-        granularity_time = "total",
+        granularity_time = "isoweek",
         granularity_geo = NULL,
         age_not = "total",
         sex_not = "total",
       ) %>%
       dplyr::filter(location_code== !!location_code) %>%
-      dplyr::select(age, sex, n) %>%
+      dplyr::group_by(age, sex) %>%
+      dplyr::summarize(n = sum(cases_testdate_n)) %>%
       dplyr::collect()
 
   } else {
     d <- pool %>% dplyr::tbl(
       ifelse(
         prelim,
-        "fhino_api_covid19_control_data_autoc19_msis_by_time_sex_age_API",
-        "fhino_api_covid19_production_data_autoc19_msis_by_time_sex_age_API"
+        "anon_api_fhino_covid19_control_covid19_autoreport_msis_by_time_age_sex_data",
+        "anon_api_fhino_covid19_production_covid19_autoreport_msis_by_time_age_sex_data"
       )) %>%
       mandatory_db_filter(
-        granularity_time = "week",
+        granularity_time = "isoweek",
         granularity_geo = NULL,
         age_not = "total",
         sex_not = "total"
       ) %>%
-      dplyr::filter(yrwk == !!yrwk) %>%
+      dplyr::filter(isoyearweek == !!yrwk) %>%
       dplyr::filter(location_code== !!location_code) %>%
-      dplyr::select(age, sex, n) %>%
+      dplyr::select(
+        age,
+        sex,
+        n = cases_testdate_n
+      ) %>%
       dplyr::collect()
   }
   setDT(d)
@@ -900,7 +929,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge", yrwk
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -928,17 +957,17 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_msis_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_msis_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_msis_by_time_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_msis_by_time_location_data"
     )) %>%
     mandatory_db_filter(
-      granularity_time = "week",
+      granularity_time = "isoweek",
       granularity_geo = granularity_geo,
       age = "total",
       sex = "total"
     ) %>%
     dplyr::group_by(location_code) %>%
-    dplyr::summarize(n=sum(n_pr)) %>%
+    dplyr::summarize(n=sum(cases_testdate_n )) %>%
     dplyr::collect()
   setDT(d)
 
@@ -982,7 +1011,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1009,8 +1038,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_hospital_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_hospital_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_hospital_icu_by_time_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_hospital_icu_by_time_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -1019,7 +1048,10 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n_hospital_main_cause) %>%
+    dplyr::select(
+      date,
+      n_hospital_main_cause = hospital_main_cases_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
@@ -1037,7 +1069,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time="day", locatio
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1063,8 +1095,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_hospital_by_time_location",
-      "fhino_api_covid19_production_data_autoc19_hospital_by_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_hospital_icu_by_time_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_hospital_icu_by_time_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -1073,7 +1105,10 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(date, n_icu) %>%
+    dplyr::select(
+      date,
+      n_icu = icu_cases_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
@@ -1091,7 +1126,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_time="day", loc
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1118,8 +1153,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_demographics",
-      "fhino_api_covid19_production_data_autoc19_demographics"
+      "anon_api_fhino_covid19_control_covid19_autoreport_hospital_icu_death_by_age_sex_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_hospital_icu_death_by_age_sex_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -1128,8 +1163,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
       sex_not = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::filter(tag_outcome == "death") %>%
-    dplyr::select(age, sex, n) %>%
+    dplyr::filter(tag_registery  == "death") %>%
+    dplyr::select(age, sex, n = cases_n) %>%
     dplyr::collect()
 
   setDT(d)
@@ -1157,7 +1192,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", location_code="norge"){
 
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1179,6 +1214,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   stopifnot(prelim %in% c(T,F))
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(granularity_time %in% c("day","week"))
+  if(granularity_time=="week") granularity_time <- "isoweek"
 
   valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
   valid_locations <- stringr::str_remove(valid_locations, "county")
@@ -1190,8 +1226,8 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
-      "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_vaccination_by_time_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = granularity_time,
@@ -1200,7 +1236,12 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
       sex = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(yrwk, date, n, n_dose) %>%
+    dplyr::select(
+      yrwk = isoyearweek,
+      date,
+      n = vaccinated_n,
+      n_dose = tag_dose
+      ) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
@@ -1264,7 +1305,7 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1273,94 +1314,6 @@ function(req, res, api_key, prelim=F, lang="nb", granularity_time, location_code
     data = d
   )
 }
-
-#* (R) hc_sysvak_by_age_sex_location ----
-#* @param location_code location code ("norge" is a common choice)
-#* @param lang nb or en
-#* @param prelim TRUE or FALSE
-#* @param api_key api_key
-#* @get /hc_sysvak_by_age_sex_location
-#* @serializer highcharts
-function(req, res, api_key, prelim=F, lang="nb", location_code){
-  stopifnot(prelim %in% c(T,F))
-  stopifnot(lang %in% c("nb", "en"))
-
-  valid_locations <- unique(fhidata::norway_locations_b2020$county_code)
-  valid_locations <- stringr::str_remove(valid_locations, "county")
-  valid_locations <- c("norge", valid_locations)
-
-  stopifnot(location_code %in% valid_locations)
-
-  if(stringr::str_length(location_code)==2) location_code <- paste0("county",location_code)
-
-  d <- pool %>% dplyr::tbl(
-    ifelse(
-      prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location",
-      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location"
-    )) %>%
-    mandatory_db_filter(
-      granularity_time = "total",
-      granularity_geo = NULL,
-      age_not = "total",
-      sex_not = "total"
-    ) %>%
-    dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(sex, age, n, n_dose) %>%
-    dplyr::collect()
-  setDT(d)
-  d <-d[age!="0-15"]
-  d[n_dose=="1.dose", n_dose:="1.dose"]
-  d[n_dose=="2.dose", n_dose:="2.dose"]
-
-  d <- dcast.data.table(
-    d,
-    age~n_dose+sex,
-    value.var = c("n")
-  )
-
-  d[,age:=gsub("-", "\\1 - \\2", age)]
-
-  setcolorder(d, c("age",
-                   "1.dose_female",
-                   "2.dose_female",
-                   "1.dose_male",
-                   "2.dose_male"))
-  setnames(
-    d,
-    c(
-      "Aldersgrupper",
-      "Kvinner 1.dose",
-      "Kvinner 2.dose",
-      "Menn 1.dose",
-      "Menn 2.dose"
-    )
-  )
-
-  if(lang=="en"){
-    setnames(
-      d,
-      c(
-        "Age group",
-        "Women first dose",
-        "Women second dose",
-        "Men first dose",
-        "Men second dose"
-      )
-    )
-  }
-
-  last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
-    dplyr::select("datetime") %>%
-    dplyr::collect()
-
-  list(
-    last_modified = last_mod$datetime,
-    data = d
-  )
-}
-
 
 #* (R) test_hc_sysvak_by_age_sex_location ----
 #* @param location_code location code ("norge" is a common choice)
@@ -1384,20 +1337,24 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location_v2",
-      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location_v2"
+      "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_age_sex_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_vaccination_by_time_age_sex_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
       granularity_geo = NULL,
-      age_not = "total",
+      age = c("16-17", "18-24", "25-39", "40-44", "45-54", "55-64", "65-74", "75-84", "85+"),
       sex_not = "total"
     ) %>%
     dplyr::filter(location_code== !!location_code) %>%
-    dplyr::select(sex, age, cum_n, n_dose) %>%
+    dplyr::select(
+      sex,
+      age,
+      cum_n = vaccinated_cum_n,
+      n_dose = tag_dose
+    ) %>%
     dplyr::collect()
   setDT(d)
-  d <-d[age!="00-15"]
   d[cum_n<5, cum_n:=0]
   d[n_dose=="1.dose", n_dose:="1.dose"]
   d[n_dose=="2.dose", n_dose:="2.dose"]
@@ -1440,7 +1397,7 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1526,7 +1483,7 @@ function(req, res, api_key, prelim=F, lang="nb", location_code){
 #   }
 #
 #   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-#     dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+#     dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
 #     dplyr::select("datetime") %>%
 #     dplyr::collect()
 #
@@ -1560,8 +1517,8 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
-      "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
+      "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_vaccination_by_time_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
@@ -1569,7 +1526,11 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::filter(n_dose == !!dose_number) %>%
+    dplyr::filter(tag_dose == !!dose_number) %>%
+    dplyr::select(
+      location_code,
+      n = vaccinated_n
+    ) %>%
     dplyr::collect()
   setDT(d)
 
@@ -1600,7 +1561,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
@@ -1657,19 +1618,26 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   d <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
-      "fhino_api_covid19_control_data_autoc19_vaccination_by_sex_age_location_v2",
-      "fhino_api_covid19_production_data_autoc19_vaccination_by_sex_age_location_v2"
+      "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_age_sex_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_vaccination_by_time_age_sex_location_data"
     )) %>%
     mandatory_db_filter(
       granularity_time = "total",
       granularity_geo = granularity_geo,
-      age_not = "total",
+      age = "18-24",
       sex = "total"
     ) %>%
-    dplyr::filter(n_dose == !!dose_number) %>%
-    dplyr::filter(age == "18-24") %>%
-    dplyr::select(yrwk, location_code,date, n, age, n_dose ,  age_and_older_cum_n,age_and_older_cum_pr100) %>%
-
+    dplyr::filter(tag_dose == !!dose_number) %>%
+    dplyr::select(
+      yrwk = isoyearweek,
+      location_code,
+      date,
+      n = vaccinated_n,
+      age,
+      n_dose = tag_dose,
+      age_and_older_cum_n = age_and_older_vaccinated_cum_n,
+      age_and_older_cum_pr100 = age_and_older_vaccinated_cum_pr100
+    ) %>%
     dplyr::collect()
   setDT(d)
 
@@ -1720,7 +1688,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
   }
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
-    dplyr::filter(task==!!ifelse(prelim,"fhino_api_covid19_copy_database_table_control","fhino_api_covid19_copy_database_table_production")) %>%
+    dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
