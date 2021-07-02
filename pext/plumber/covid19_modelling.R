@@ -3,7 +3,7 @@ library(data.table)
 library(magrittr)
 library(ggplot2)
 
-if(.Platform$OS.type == "windows"){
+if(rstudioapi::isAvailable() & .Platform$OS.type == "unix"){
   valid_api_keys <- c("test")
 } else {
   apikeys <- readxl::read_excel("/sideloaded_data/apikeys.xlsx")
@@ -20,7 +20,20 @@ db_config <- list(
   password = Sys.getenv("DB_PASSWORD", "example")
 )
 
-if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
+if(rstudioapi::isAvailable() & .Platform$OS.type == "unix"){
+  # dev
+  library(sykdomspulsen)
+  db_config$server <- "dm-test"
+  db_config$db <- "Sykdomspulsen_surv"
+  pool <- dbPool(
+    drv = odbc::odbc(),
+    driver = db_config$driver,
+    server = "dm-test",
+    database = db_config$db,
+    port = db_config$port,
+    trusted_connection = "yes"
+  )
+} else if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
   # linux
   pool <- dbPool(
     drv = odbc::odbc(),
@@ -31,16 +44,6 @@ if(db_config$driver %in% c("ODBC Driver 17 for SQL Server")){
     uid = db_config$user,
     Pwd = db_config$password#,
     #trusted_connection = "yes"
-  )
-} else if(db_config$driver %in% c("Sql Server")){
-  # windows
-  pool <- dbPool(
-    drv = odbc::odbc(),
-    driver = db_config$driver,
-    server = "dm-test",
-    database = db_config$db,
-    port = db_config$port,
-    trusted_connection = "yes"
   )
 } else {
   pool <- dbPool(
@@ -135,14 +138,18 @@ function(req, res){
 #* @param api_key api_key
 #* @get /model_msis_cases_by_time_location
 function(req, res, api_key, prelim=F){
-  d <- pool %>% dplyr::tbl("data_autoc19_msis_by_time_location") %>%
+  d <- pool %>% dplyr::tbl("anon_covid19_autoreport_msis_by_time_location_data") %>%
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = "county",
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::select(location_code, date, n=n_pr) %>%
+    dplyr::select(
+      location_code,
+      date,
+      n=cases_testdate_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   d
@@ -152,7 +159,7 @@ function(req, res, api_key, prelim=F){
 #* @param api_key api_key
 #* @get /model_norsyss_covid19_by_time_location
 function(req, res, api_key){
-  d <- pool %>% dplyr::tbl("data_norsyss") %>%
+  d <- pool %>% dplyr::tbl("anon_skuhr") %>%
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = c("nation","county"),
@@ -161,7 +168,12 @@ function(req, res, api_key){
     ) %>%
     dplyr::filter(tag_outcome %in% "covid19_vk_ote") %>%
     dplyr::filter(date >= "2020-03-09") %>%
-    dplyr::select(location_code, date, n, consult_with_influenza) %>%
+    dplyr::select(
+      location_code,
+      date,
+      n = consultations_covid19_vk_ote_n,
+      consult_with_influenza = denom_covid19_vk_ote_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   setorder(d,location_code,date)
@@ -174,14 +186,18 @@ function(req, res, api_key){
 #* @get /model_hospital_by_time_location
 function(req, res, api_key, prelim=F){
 
-  d <- pool %>% dplyr::tbl("data_autoc19_hospital_by_time_location") %>%
+  d <- pool %>% dplyr::tbl("anon_covid19_autoreport_hospital_icu_by_time_data") %>%
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = c("nation", "county"),
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::select(location_code, date, n_hospital_main_cause) %>%
+    dplyr::select(
+      location_code,
+      date,
+      n_hospital_main_cause = hospital_main_cases_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
@@ -196,14 +212,17 @@ function(req, res, api_key, prelim=F){
 #* @get /model_icu_by_time_location
 function(req, res, api_key, prelim=FALSE){
 
-  d <- pool %>% dplyr::tbl("data_autoc19_hospital_by_time_location") %>%
+  d <- pool %>% dplyr::tbl("anon_covid19_autoreport_hospital_icu_by_time_data") %>%
     mandatory_db_filter(
       granularity_time = "day",
       granularity_geo = "nation",
       age = "total",
       sex = "total"
     ) %>%
-    dplyr::select(date, n_icu) %>%
+    dplyr::select(
+      date,
+      n_icu = icu_cases_n
+    ) %>%
     dplyr::collect()
   setDT(d)
   d[,date:=as.Date(date)]
