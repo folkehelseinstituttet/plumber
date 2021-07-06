@@ -1580,7 +1580,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
 #* @param prelim TRUE or FALSE
 #* @param api_key api_key
 #* @get /hc_sysvak_map_v2
-#* @serializer json
+#* @serializer json list(auto_unbox=TRUE)
 function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county"){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(granularity_geo %in% c("county", "municip"))
