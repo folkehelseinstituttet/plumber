@@ -1573,7 +1573,7 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
 
 
 
-#* (N/O/P/Q) hc_sysvak_map_v2 -----
+#* (N/O) hc_sysvak_map_v2 -----
 #* Map of MSIS incidence
 #* @param granularity_geo county or municip
 #* @param lang nb or en
