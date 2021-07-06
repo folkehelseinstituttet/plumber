@@ -1573,47 +1573,17 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", d
 
 
 
-#* (N/O/P/Q) test_hc_sysvak_map -----
+#* (N/O/P/Q) hc_sysvak_map_v2 -----
 #* Map of MSIS incidence
-#* @param dose_number 1 or 2
 #* @param granularity_geo county or municip
 #* @param lang nb or en
 #* @param prelim TRUE or FALSE
 #* @param api_key api_key
-#* @get /test_hc_sysvak_map
-#* @serializer highcharts
-function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", measure=1,dose_number = 1){
+#* @get /hc_sysvak_map_v2
+#* @serializer serializer_json
+function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county"){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(granularity_geo %in% c("county", "municip"))
-  stopifnot(dose_number %in% c(1, 2))
-
-  if(measure==1){
-    measure_type <- "age_and_older_cum_n"
-  } else {
-    measure_type <- "age_and_older_cum_pr100"
-  }
-
-  if(dose_number==1){
-    dose_number <- "1.dose"
-  } else {
-    dose_number <- "2.dose"
-  }
-
-  # d <- pool %>% dplyr::tbl(
-  #   ifelse(
-  #     prelim,
-  #     "fhino_api_covid19_control_data_autoc19_vaccination_time_location",
-  #     "fhino_api_covid19_production_data_autoc19_vaccination_time_location"
-  #   )) %>%
-  #   mandatory_db_filter(
-  #     granularity_time = "total",
-  #     granularity_geo = granularity_geo,
-  #     age = "total",
-  #     sex = "total"
-  #   ) %>%
-  #   dplyr::filter(n_dose == !!dose_number) %>%
-  #   dplyr::collect()
-  # setDT(d)
 
   d <- pool %>% dplyr::tbl(
     ifelse(
@@ -1627,75 +1597,75 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county", m
       age = "18-24",
       sex = "total"
     ) %>%
-    dplyr::filter(tag_dose == !!dose_number) %>%
     dplyr::select(
-      yrwk = isoyearweek,
+      # yrwk = isoyearweek,
       location_code,
-      date,
-      n = vaccinated_n,
-      age,
+      # date,
       n_dose = tag_dose,
-      age_and_older_cum_n = age_and_older_vaccinated_cum_n,
-      age_and_older_cum_pr100 = age_and_older_vaccinated_cum_pr100
+      age_and_older_vaccinated_cum_n,
+      age_and_older_vaccinated_cum_pr100
     ) %>%
     dplyr::collect()
   setDT(d)
 
-  d[,n:=get(measure_type)]
+  d <- d %>% tidyr::pivot_wider(
+    id_cols = location_code,
+    names_from = n_dose,
+    values_from = c(
+      age_and_older_vaccinated_cum_n,
+      age_and_older_vaccinated_cum_pr100
+    )
+  ) %>%
+    as.data.table()
 
+  setnames(
+    d,
+    c(
+      "age_and_older_vaccinated_cum_n_1.dose",
+      "age_and_older_vaccinated_cum_n_2.dose",
+      "age_and_older_vaccinated_cum_pr100_1.dose",
+      "age_and_older_vaccinated_cum_pr100_2.dose"
+    ),
+    c(
+      "first_dosage",
+      "second_dosage",
+      "first_dosage_percent",
+      "second_dosage_percent"
+    ),
+  )
 
-  setorder(d,-n)
+  # censoring
+  d[first_dosage < 5, first_dosage := 0]
+  d[second_dosage < 5, second_dosage := 0]
 
-  if(granularity_geo=="county"){
-    d[
-      fhidata::norway_locations_long_b2020,
-      on="location_code",
-      location_name := location_name
-    ]
+  d[
+    fhidata::norway_locations_names(),
+    on = "location_code",
+    name := location_name
+  ]
 
-    d[, location_name := stringr::str_to_lower(location_name)]
+  d[, id := stringr::str_remove(location_code, "^[a-z]+")]
 
-    if(measure==1){
-      d[n<5, n:=0]
-
-      d <- d[,.(
-      Fylke = location_name,
-      Antall = n
-      )]
-    } else {
-      d <- d[,.(
-        Fylke = location_name,
-        Andel = n
-      )]
-    }
-
-  } else if(granularity_geo=="municip"){
-    d[, Kommunenr := stringr::str_remove(location_code,"municip")]
-    if(measure==1){
-    d[n<5, n:=0]
-
-    d <- d[,.(
-      Kommunenr = Kommunenr,
-      Antall = n
-    )]
-    } else {
-      d <- d[,.(
-        Kommunenr = Kommunenr,
-        Andel = "-"
-      )]
-    }
-
-  }
+  d <- d[,.(
+    id,
+    name,
+    first_dosage,
+    second_dosage,
+    first_dosage_percent,
+    second_dosage_percent
+  )]
 
   last_mod <- pool %>% dplyr::tbl("rundate") %>%
     dplyr::filter(task==!!ifelse(prelim,"api_fhino_covid19_copy_database_table_control","api_fhino_covid19_copy_database_table_production")) %>%
     dplyr::select("datetime") %>%
     dplyr::collect()
 
-  list(
-    last_modified = last_mod$datetime,
+  retval <- list(
+    date = last_mod$datetime,
     data = d
   )
+  retval
+  #jsonlite::toJSON(retval)
 }
 
 
