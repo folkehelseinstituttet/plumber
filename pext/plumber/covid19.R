@@ -1585,7 +1585,29 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county"){
   stopifnot(lang %in% c("nb", "en"))
   stopifnot(granularity_geo %in% c("county", "municip"))
 
-  d <- pool %>% dplyr::tbl(
+  d1 <- pool %>% dplyr::tbl(
+    ifelse(
+      prelim,
+      "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_age_sex_location_data",
+      "anon_api_fhino_covid19_production_covid19_autoreport_vaccination_by_time_age_sex_location_data"
+    )) %>%
+    mandatory_db_filter(
+      granularity_time = "total",
+      granularity_geo = granularity_geo,
+      age = "00-15",
+      sex = "total"
+    ) %>%
+    dplyr::select(
+      # yrwk = isoyearweek,
+      location_code,
+      # date,
+      n_dose = tag_dose,
+      age_and_older_vaccinated_cum_n
+    ) %>%
+    dplyr::collect() %>%
+    setDT()
+
+  d2 <- pool %>% dplyr::tbl(
     ifelse(
       prelim,
       "anon_api_fhino_covid19_control_covid19_autoreport_vaccination_by_time_age_sex_location_data",
@@ -1602,11 +1624,16 @@ function(req, res, api_key, prelim=FALSE, lang="nb", granularity_geo="county"){
       location_code,
       # date,
       n_dose = tag_dose,
-      age_and_older_vaccinated_cum_n,
       age_and_older_vaccinated_cum_pr100
     ) %>%
-    dplyr::collect()
-  setDT(d)
+    dplyr::collect() %>%
+    setDT()
+
+  d <- merge(
+    d1,
+    d2,
+    by = c("location_code", "n_dose")
+  )
 
   d <- d %>% tidyr::pivot_wider(
     id_cols = location_code,
